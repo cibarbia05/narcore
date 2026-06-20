@@ -1,0 +1,29 @@
+# Project-scoped Codex config — checked into git, shared by the whole team.
+#
+# Codex loads this file ONLY for *trusted* projects, and it takes precedence
+# over each developer's global ~/.codex/config.toml (closest file wins).
+# First run in this repo, run `codex` and choose "trust" when prompted.
+#
+# NOTE: project-scoped config may NOT set credential/provider keys
+# (model_provider, model_providers, openai_base_url, profile, notify, ...).
+# Keep those in your personal ~/.codex/config.toml.
+
+# --- MCP servers: mirrors the team .mcp.json used by Claude Code ---
+
+# HTTP server. The API key is read from the CONTEXT7_API_KEY environment
+# variable at runtime — never hardcode it here. Each dev sets CONTEXT7_API_KEY
+# in their own environment (get a free key at https://context7.com/dashboard).
+[mcp_servers.context7]
+url = "https://mcp.context7.com/mcp"
+env_http_headers = { CONTEXT7_API_KEY = "CONTEXT7_API_KEY" }
+
+# stdio servers. Cross-platform `npx` form.
+# Windows users: if Codex cannot resolve `npx`, override in your personal
+# ~/.codex/config.toml with: command = "cmd", args = ["/c", "npx", "-y", ...].
+[mcp_servers.playwright]
+command = "npx"
+args = ["-y", "@playwright/mcp@latest"]
+
+[mcp_servers.chrome-devtools]
+command = "npx"
+args = ["-y", "chrome-devtools-mcp@latest"]

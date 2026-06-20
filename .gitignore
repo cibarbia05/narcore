@@ -1,0 +1,23 @@
+# --- Secrets: never commit ---
+.env
+.env.*
+!.env.example
+
+# Personal, machine-local overrides (NOT shared with the team)
+.claude/settings.local.json
+.codex/config.local.toml
+
+# --- Dependencies / build output ---
+node_modules/
+dist/
+build/
+.next/
+out/
+coverage/
+*.log
+
+# --- Editor / OS cruft ---
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
