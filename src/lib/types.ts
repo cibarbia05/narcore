@@ -123,6 +123,33 @@ export interface CorpusStats {
   approved: number;
 }
 
+// ----- Semantic drift visualization -----
+
+export type SemanticPointKind = CorpusSource | "post";
+
+export interface SemanticDriftPoint {
+  id: string;
+  kind: SemanticPointKind;
+  label: string;
+  text: string;
+  category: string;
+  drug: string | null;
+  x: number;
+  y: number;
+  riskScore: number | null;
+  flagged: boolean | null;
+}
+
+export interface SemanticDriftResponse {
+  points: SemanticDriftPoint[];
+  stats: {
+    seed: number;
+    approved: number;
+    posts: number;
+  };
+  generatedAt: string;
+}
+
 // ----- Outreach / lead summary -----
 
 export interface LeadSummary {

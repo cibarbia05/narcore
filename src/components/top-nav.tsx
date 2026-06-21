@@ -29,14 +29,14 @@ export function TopNav({
     >
       <nav
         aria-label="Primary"
-        className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-6"
+        className="mx-auto flex min-h-16 w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-6"
       >
         <Link
           href="/"
           className="flex min-w-0 items-center gap-3 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <Logo className="size-7 shrink-0" />
-          <span className="truncate font-mono text-sm font-medium tracking-tight">
+          <span className="hidden truncate font-mono text-sm font-medium tracking-tight sm:inline">
             narcore
           </span>
         </Link>
@@ -44,7 +44,7 @@ export function TopNav({
           <Button
             variant="outline"
             size="lg"
-            className="h-9 px-3 text-sm"
+            className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
             nativeButton={false}
             render={<Link href="/feed" />}
           >
@@ -53,7 +53,16 @@ export function TopNav({
           <Button
             variant="outline"
             size="lg"
-            className="h-9 px-3 text-sm"
+            className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
+            nativeButton={false}
+            render={<Link href="/semantic-drift" />}
+          >
+            Semantic Drift
+          </Button>
+          <Button
+            variant="outline"
+            size="lg"
+            className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
             nativeButton={false}
             render={<Link href="/dashboard" />}
           >

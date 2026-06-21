@@ -150,6 +150,25 @@
   html {
     @apply font-sans;
   }
+
+  @keyframes semantic-drift-pulse {
+    0%,
+    100% {
+      opacity: 0.08;
+      transform: scale(0.72);
+    }
+    50% {
+      opacity: 0.2;
+      transform: scale(1);
+    }
+  }
+
+  .semantic-drift-pulse {
+    animation: semantic-drift-pulse 3.8s var(--ease-in-out-brand) infinite;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
   /* Respect users who prefer reduced motion. */
   @media (prefers-reduced-motion: reduce) {
     *,
