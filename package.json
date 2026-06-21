@@ -10,11 +10,14 @@
     "typecheck": "tsc --noEmit",
     "seed": "tsx scripts/seed.ts",
     "post-mock": "tsx scripts/post-mock.ts",
-    "scrape-demo": "tsx scripts/scrape-demo.ts"
+    "scrape-demo": "tsx scripts/scrape-demo.ts",
+    "ig:login": "tsx scripts/ig-login.ts",
+    "ig:verify": "tsx scripts/ig-verify.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",
     "@base-ui/react": "^1.6.0",
+    "@browserbasehq/sdk": "^2.10.0",
     "@browserbasehq/stagehand": "^3.6.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

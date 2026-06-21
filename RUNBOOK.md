@@ -185,6 +185,51 @@ curl.exe -X POST http://localhost:3000/api/scrape -H "content-type: application/
   **live browser** (or replay) navigating `/feed` and extracting posts in real time.
 - New rows stream into `/dashboard` as each post is ingested.
 
+### Live Agents — 5 parallel browsers on real Instagram (`/agents`)
+
+The "War Room": several cloud browsers scan real Instagram hashtags in parallel, each
+streamed live into the UI. Leads flow into the same `/dashboard` queue.
+
+**Browserbase — full setup in 6 steps:**
+1. Get `BROWSERBASE_API_KEY` + `BROWSERBASE_PROJECT_ID` from <https://www.browserbase.com/settings> → put both in `.env.local`. Confirm your plan's **concurrent‑session limit** ≥ the agents you'll run.
+2. `pnpm ig:login` (add a number to do several, e.g. `pnpm ig:login 3`) → opens a cloud browser on IG's login page.
+3. In that live‑view URL, log into a **throwaway** IG account **by hand** until you see your **home feed** (solve any phone/email checkpoint there), then press Enter.
+4. Paste the printed `BROWSERBASE_CONTEXT_IDS=...` line into `.env.local`, then **restart `pnpm dev`**.
+5. `pnpm ig:verify` → confirms each context shows `✅ LOGGED IN` (re‑run step 2 for any that fail).
+6. Open `http://localhost:3000/agents` → set the agent count (start with **1** on a fresh account) → **Launch**.
+
+**One‑time setup — log in burner accounts (persisted Browserbase Contexts):**
+```bash
+pnpm ig:login 5     # provision 5 contexts (one per throwaway IG account)
+```
+For each, it prints a **live‑view URL** — open it, log into Instagram **by hand** (solve any
+2FA / "verify it's you" checkpoint yourself), then press Enter so the cookies persist. At the
+end it prints a `BROWSERBASE_CONTEXT_IDS=...` line. Paste it into `.env.local` and restart
+`pnpm dev`. The agents reuse these logins (read‑only) so they start **already authenticated** —
+the main defense against login checkpoints during the demo.
+
+**Agent env vars** (`.env.local`, all optional except the contexts):
+```ini
+BROWSERBASE_CONTEXT_IDS=ctx_a,ctx_b,ctx_c,ctx_d,ctx_e   # from `pnpm ig:login` (required)
+IG_AGENT_COUNT=5                 # parallel agents; must be <= your plan's concurrent-session limit
+IG_TARGET_TAGS=                  # hashtags (no '#'); defaults derive from the seed corpus
+IG_PROXY_COUNTRY=US              # residential proxy egress + keep consistent with the accounts
+IG_REGION=us-west-2              # must match Stagehand's API region (default us-west-2)
+IG_MAX_POSTS_PER_AGENT=8         # per-agent guardrails so nothing hangs a live demo
+IG_AGENT_TIMEOUT_MS=120000
+SCRAPE_MODEL=anthropic/claude-sonnet-4-6   # Stagehand extraction (needs ANTHROPIC_API_KEY)
+```
+
+**Run it:** open `http://localhost:3000/agents` → set the agent count → **Launch**. Each tile
+streams that browser; statuses advance independently; `/dashboard` fills with scored leads.
+A stuck agent shows **Checkpoint/Blocked** with a **Take over** link (opens the interactive
+live view in a new tab) and never blocks the others. **Break‑glass fixture** populates the
+queue from the offline fixture if the live demo stalls.
+
+> ⚠️ Automating real Instagram breaks IG's ToS and burner accounts can be banned — use
+> throwaway accounts only, never a personal one. Confirm your Browserbase plan allows the
+> intended **concurrent** session count before the demo.
+
 ---
 
 ## 7. Inspect Redis directly (optional)

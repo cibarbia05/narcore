@@ -6,11 +6,13 @@
 // live updates; mutations are awaited and the caller revalidates the SWR cache.
 import useSWR, { mutate } from "swr";
 import type {
+  AgentRun,
   CorpusStats,
   DraftedOutreach,
   LeadSummary,
   Paginated,
   Post,
+  StartRunResponse,
 } from "./types";
 
 /** Typed GET fetcher. Throws on non-2xx so SWR/await surfaces the error. */
@@ -97,5 +99,27 @@ export const rescore = (scope: "pending" | "all" = "pending") =>
 
 export const runScrape = (live = false) =>
   postJson<{ ingested: number }>("/api/scrape", { live });
+
+// ----- Parallel agents ("War Room") -----
+
+/** Poll one run's live state. Null runId disables the request (no active run).
+ *  Polls fast (1.5s) while running, then stops once the run reaches a terminal
+ *  state so we don't hammer the server after everyone's done. */
+export function useRun(runId: string | null) {
+  return useSWR<{ run: AgentRun }>(
+    runId ? `/api/agents/run/${runId}` : null,
+    fetcher,
+    {
+      refreshInterval: (latest) => (latest?.run.status === "running" ? 1500 : 0),
+      keepPreviousData: true,
+    },
+  );
+}
+
+export const startRun = (body: { agentCount?: number; tags?: string[] } = {}) =>
+  postJson<StartRunResponse>("/api/agents/run", body);
+
+export const stopRun = (runId: string) =>
+  postJson<{ stopped: boolean }>(`/api/agents/run/${runId}/stop`);
 
 export { mutate };

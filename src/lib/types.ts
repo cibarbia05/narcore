@@ -84,6 +84,76 @@ export interface Post {
   corpusEntryId: string | null; // if approved -> the corpus vector id we created
 }
 
+// ----- Parallel browser agents ("War Room") -----
+
+/** Lifecycle of one live Instagram agent. Drives the tile's status badge.
+ *  - starting:   session created, Stagehand attaching
+ *  - loading:    navigating to the target hashtag
+ *  - browsing:   scrolling the feed
+ *  - extracting: pulling posts from the rendered page
+ *  - ingesting:  POSTing extracted posts to /api/ingest
+ *  - captcha:    a CAPTCHA/checkpoint appeared (human can take over the live view)
+ *  - blocked:    a login wall / rate limit stopped the agent
+ *  - done:       finished its post budget cleanly
+ *  - error:      unexpected failure (see `error`)
+ *  - stopped:    aborted by the operator */
+export const AGENT_STATUSES = [
+  "starting",
+  "loading",
+  "browsing",
+  "extracting",
+  "ingesting",
+  "captcha",
+  "blocked",
+  "done",
+  "error",
+  "stopped",
+] as const;
+export type AgentStatus = (typeof AGENT_STATUSES)[number];
+
+/** Terminal states — the agent loop has ended and its session is released. */
+export const AGENT_TERMINAL_STATUSES: readonly AgentStatus[] = [
+  "done",
+  "blocked",
+  "error",
+  "stopped",
+];
+
+export const RUN_STATUSES = ["running", "done", "stopped"] as const;
+export type RunStatus = (typeof RUN_STATUSES)[number];
+
+/** One agent's live, pollable state. Each agent owns its own Redis hash so the
+ *  five parallel loops never race on a shared record. */
+export interface AgentRecord {
+  idx: number; // 1-based agent number within the run
+  name: string; // display name, e.g. "Agent 1"
+  target: string; // the Instagram hashtag it browses (no leading '#')
+  sessionId: string; // Browserbase session id
+  liveViewUrl: string; // debuggerFullscreenUrl — embedded read-only in the UI
+  status: AgentStatus;
+  currentAction: string; // human-readable "what it's doing right now"
+  postsFound: number; // distinct posts ingested so far
+  lastCaption: string | null; // most recent caption (a heartbeat for the UI)
+  error: string | null;
+  updatedAt: string; // ISO
+}
+
+/** A run = the 5 agents launched together. */
+export interface AgentRun {
+  id: string;
+  status: RunStatus;
+  startedAt: string; // ISO
+  agentCount: number;
+  agents: AgentRecord[];
+}
+
+/** POST /api/agents/run response — returned immediately so the grid can render
+ *  the live-view iframes before any agent has finished. */
+export interface StartRunResponse {
+  runId: string;
+  agents: AgentRecord[];
+}
+
 // ----- Suspicious corpus -----
 
 /** A seed slang entry as authored in the JSON dataset. */

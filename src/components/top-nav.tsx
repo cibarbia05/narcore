@@ -55,6 +55,15 @@ export function TopNav({
             size="lg"
             className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
             nativeButton={false}
+            render={<Link href="/agents" />}
+          >
+            Live Agents
+          </Button>
+          <Button
+            variant="outline"
+            size="lg"
+            className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
+            nativeButton={false}
             render={<Link href="/semantic-drift" />}
           >
             Semantic Drift

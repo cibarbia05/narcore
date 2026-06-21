@@ -29,8 +29,15 @@ export const scrapeSchema = z.object({
   live: z.boolean().optional(),
 });
 
+export const startRunSchema = z.object({
+  agentCount: z.number().int().min(1).max(10).optional(),
+  // Instagram hashtags (no leading '#'); defaults derive from the seed corpus.
+  tags: z.array(z.string().min(1)).max(10).optional(),
+});
+
 export type ScrapedPostInput = z.infer<typeof scrapedPostSchema>;
 export type DecisionInput = z.infer<typeof decisionSchema>;
 export type OutreachInput = z.infer<typeof outreachSchema>;
 export type RescoreInput = z.infer<typeof rescoreSchema>;
 export type ScrapeInput = z.infer<typeof scrapeSchema>;
+export type StartRunInput = z.infer<typeof startRunSchema>;
