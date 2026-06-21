@@ -7,6 +7,9 @@
 .claude/settings.local.json
 .codex/config.local.toml
 
+# Linked git worktrees created inside the repo (e.g. parallel agent worktrees)
+.claude/worktrees/
+
 # --- Dependencies / build output ---
 node_modules/
 dist/
