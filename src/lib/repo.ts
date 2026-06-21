@@ -12,6 +12,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { RESP_TYPES } from "redis";
+
 import {
   EmbeddingDimError,
   EmbeddingUnavailableError,
@@ -40,6 +42,9 @@ import type {
   Platform,
   Post,
   RiskBreakdown,
+  SemanticDriftPoint,
+  SemanticDriftResponse,
+  SemanticPointKind,
   SeedDataset,
   SuspiciousTerm,
 } from "./types";
@@ -289,6 +294,169 @@ export async function getCorpusEntryDrug(corpusKey: string | null): Promise<stri
   const client = await connectRedis();
   const drug = await client.hGet(corpusKey, "drug");
   return drug ? String(drug) : null;
+}
+
+// ----- semantic drift visualization -----
+
+interface RedisVectorEntry {
+  id: string;
+  kind: SemanticPointKind;
+  label: string;
+  text: string;
+  category: string;
+  drug: string | null;
+  riskScore: number | null;
+  flagged: boolean | null;
+  vector: number[];
+}
+
+const SEMANTIC_CORPUS_LIMIT = 120;
+const SEMANTIC_POST_LIMIT = 120;
+
+/** Read a bounded vector snapshot and project it server-side for visualization.
+ *  Raw 768-dim vectors stay on the server; the client only receives 2D points. */
+export async function semanticDriftSnapshot(): Promise<SemanticDriftResponse> {
+  const client = await connectRedis();
+  await ensureIndexes();
+
+  const [corpusReply, postsReply] = await Promise.all([
+    client.ft.search(CORPUS_INDEX, "*", {
+      RETURN: ["source", "text", "category", "drug", "note"],
+      LIMIT: { from: 0, size: SEMANTIC_CORPUS_LIMIT },
+      DIALECT: 2,
+    }),
+    client.ft.search(POSTS_INDEX, "*", {
+      SORTBY: { BY: "riskScore", DIRECTION: "DESC" },
+      RETURN: ["id", "username", "caption", "platform", "riskScore", "flagged"],
+      LIMIT: { from: 0, size: SEMANTIC_POST_LIMIT },
+      DIALECT: 2,
+    }),
+  ]);
+
+  const binaryClient = client.withTypeMapping({
+    [RESP_TYPES.BLOB_STRING]: Buffer,
+  });
+
+  const [corpusEntries, postEntries]: [
+    Array<RedisVectorEntry | null>,
+    Array<RedisVectorEntry | null>,
+  ] = await Promise.all([
+    Promise.all(
+      corpusReply.documents.map(async (doc) => {
+        const value = doc.value as Record<string, unknown>;
+        const vector = await readVector(binaryClient, doc.id, "vector");
+        if (!vector) return null;
+        const source = String(value.source ?? "") === "approved" ? "approved" : "seed";
+        const text = String(value.text ?? "");
+        return {
+          id: doc.id,
+          kind: source,
+          label: source === "approved" ? "Learned Caption" : seedLabel(text),
+          text,
+          category: String(value.category ?? ""),
+          drug: value.drug ? String(value.drug) : null,
+          riskScore: null,
+          flagged: null,
+          vector,
+        } satisfies RedisVectorEntry;
+      }),
+    ),
+    Promise.all(
+      postsReply.documents.map(async (doc) => {
+        const value = doc.value as Record<string, unknown>;
+        const vector = await readVector(binaryClient, doc.id, "queryVector");
+        if (!vector) return null;
+        const username = String(value.username ?? "Unknown");
+        const platform = String(value.platform ?? "unknown");
+        return {
+          id: doc.id,
+          kind: "post",
+          label: username,
+          text: String(value.caption ?? ""),
+          category: platform,
+          drug: null,
+          riskScore: toNumber(field(value, "riskScore")),
+          flagged: field(value, "flagged") === "true",
+          vector,
+        } satisfies RedisVectorEntry;
+      }),
+    ),
+  ]);
+
+  const entries = [...corpusEntries, ...postEntries].filter(isVectorEntry);
+  const points = projectEntries(entries);
+  return {
+    points,
+    stats: {
+      seed: points.filter((point) => point.kind === "seed").length,
+      approved: points.filter((point) => point.kind === "approved").length,
+      posts: points.filter((point) => point.kind === "post").length,
+    },
+    generatedAt: new Date().toISOString(),
+  };
+}
+
+async function readVector(
+  client: { hGet(key: string, field: string): Promise<unknown> },
+  key: string,
+  fieldName: string,
+): Promise<number[] | null> {
+  const raw = (await client.hGet(key, fieldName)) as Buffer | null;
+  if (!raw || raw.length % 4 !== 0) return null;
+  const view = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
+  const vector = new Array<number>(raw.length / 4);
+  for (let offset = 0; offset < raw.length; offset += 4) {
+    vector[offset / 4] = view.getFloat32(offset, true);
+  }
+  return vector;
+}
+
+function isVectorEntry(entry: RedisVectorEntry | null): entry is RedisVectorEntry {
+  return entry !== null;
+}
+
+function projectEntries(entries: RedisVectorEntry[]): SemanticDriftPoint[] {
+  const projected = entries.map((entry) => {
+    let x = 0;
+    let y = 0;
+    for (let i = 0; i < entry.vector.length; i++) {
+      x += entry.vector[i] * randomBasis(i, 17);
+      y += entry.vector[i] * randomBasis(i, 53);
+    }
+    return { entry, x, y };
+  });
+
+  const maxAbs = Math.max(
+    0.0001,
+    ...projected.flatMap((point) => [Math.abs(point.x), Math.abs(point.y)]),
+  );
+
+  return projected.map(({ entry, x, y }) => ({
+    id: entry.id,
+    kind: entry.kind,
+    label: entry.label,
+    text: entry.text,
+    category: entry.category,
+    drug: entry.drug,
+    x: round((x / maxAbs) * 0.9),
+    y: round((y / maxAbs) * 0.9),
+    riskScore: entry.riskScore,
+    flagged: entry.flagged,
+  }));
+}
+
+function randomBasis(index: number, salt: number): number {
+  const x = Math.sin((index + 1) * 12.9898 + salt * 78.233) * 43758.5453;
+  return (x - Math.floor(x)) * 2 - 1;
+}
+
+function round(n: number): number {
+  return Math.round(n * 1000) / 1000;
+}
+
+function seedLabel(text: string): string {
+  const [term] = text.split(".");
+  return term?.trim() || "Seed Term";
 }
 
 // ----- scoring orchestration (ingest + rescore) -----
