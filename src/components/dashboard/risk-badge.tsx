@@ -25,7 +25,7 @@ export function RiskBadge({ score }: { score: number }) {
     >
       <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
       <span className="sr-only">{label} risk: </span>
-      {score.toFixed(2)}
+      {score.toFixed(0)}
     </Badge>
   );
 }

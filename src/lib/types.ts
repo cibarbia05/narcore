@@ -42,7 +42,7 @@ export interface RiskBreakdown {
   semantic: number; // s in [0,1] — normalized max cosine similarity to the corpus
   rawCosine: number; // raw max cosine in [-1,1] before normalization (transparency)
   heuristicBoost: number; // h in [0,1] — capped sum of heuristic hits
-  score: number; // final risk in [0,1]
+  score: number; // final risk in [1,100]
   flagged: boolean; // score >= threshold
   threshold: number; // threshold used (snapshot, so old scores stay interpretable)
   matchedTermId: string | null; // corpus entry id of the nearest neighbor (the "why")

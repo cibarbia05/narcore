@@ -4,6 +4,10 @@
 import { riskBand } from "./scoring";
 import type { DraftedOutreach, LeadSummary, Post } from "./types";
 
+function formatRiskScore(score: number): string {
+  return score.toFixed(1);
+}
+
 export function buildLeadSummary(post: Post): LeadSummary {
   const hits = post.risk.hits;
   const handoffApps = uniq(hits.filter((h) => h.kind === "handoff").map((h) => h.term));
@@ -38,14 +42,14 @@ export function buildOutreachDraft(
 ): DraftedOutreach {
   const to =
     channel === "email" ? "tips@dea.gov" : `trust-and-safety@${summary.platform}.example`;
-  const subject = `Narcore lead: ${summary.handle} on ${summary.platform} (risk ${summary.riskScore.toFixed(2)})`;
+  const subject = `Narcore lead: ${summary.handle} on ${summary.platform} (risk ${formatRiskScore(summary.riskScore)})`;
   const codeWords = summary.detectedCodeWords.length
     ? summary.detectedCodeWords.join(", ")
     : "n/a";
   const body = [
     "Hello,",
     "",
-    `Narcore flagged a public post by ${summary.handle} on ${summary.platform} as likely illicit-drug advertising (risk score ${summary.riskScore.toFixed(2)}, band: ${summary.riskBand}).`,
+    `Narcore flagged a public post by ${summary.handle} on ${summary.platform} as likely illicit-drug advertising (risk score ${formatRiskScore(summary.riskScore)}, band: ${summary.riskBand}).`,
     "",
     `Post: ${summary.postLink}`,
     `Posted: ${summary.postDate}`,
@@ -90,7 +94,7 @@ function buildNarrative(
   paymentCues: string[],
 ): string {
   return [
-    `Account ${post.username} on ${post.platform} published a post that Narcore assessed as ${band}-risk for illicit-drug advertising (score ${post.riskScore.toFixed(2)}).`,
+    `Account ${post.username} on ${post.platform} published a post that Narcore assessed as ${band}-risk for illicit-drug advertising (score ${formatRiskScore(post.riskScore)}).`,
     `Caption: "${post.caption}"`,
     buildRationale(post, handoffApps, paymentCues),
     `Recommended action: forward to the relevant platform Trust & Safety team and/or local law-enforcement narcotics unit for review.`,
