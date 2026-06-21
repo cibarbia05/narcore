@@ -46,6 +46,19 @@ async function provisionOne(n: number, total: number): Promise<string> {
   const sessionId = await createIgSession(contextId, { persist: true });
   const liveViewUrl = await getLiveViewUrl(sessionId);
 
+  // Record the browser fingerprint this context is logged in under, so runs can
+  // verify they still match it (B2). Best-effort — login must not require Redis.
+  try {
+    const { persistContextIdentity } = await import("../src/lib/session-identity");
+    await persistContextIdentity(contextId);
+    console.log(`[ig-login] recorded identity fingerprint for ${contextId}`);
+  } catch (err) {
+    console.warn(
+      "[ig-login] could not record identity fingerprint (is Redis up?):",
+      err instanceof Error ? err.message : err,
+    );
+  }
+
   // Pre-open Instagram's login page so you land right on the form. Best-effort —
   // if it fails, just type instagram.com into the live view's address bar.
   let stagehand: { close: () => Promise<void> } | undefined;

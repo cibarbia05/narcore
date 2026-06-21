@@ -15,8 +15,16 @@
 //   bb.contexts.create({ projectId }) -> { id }
 import Browserbase from "@browserbasehq/sdk";
 
+import type { SessionIdentity } from "./types";
+
 // Browserbase's session regions (a closed union in the SDK).
 type BbRegion = "us-east-1" | "us-west-2" | "eu-central-1" | "ap-southeast-1";
+
+// Pinned desktop OS (SDK union). Consistent OS across login + every run is the main
+// lever against IG checkpoints — but ONLY if the persisted login context was created
+// with the SAME os, so pinning is OPT-IN (see browserOs()).
+type BbOs = "windows" | "mac" | "linux" | "mobile" | "tablet";
+const BB_OS_VALUES: readonly BbOs[] = ["windows", "mac", "linux", "mobile", "tablet"];
 const BB_REGIONS: readonly BbRegion[] = ["us-east-1", "us-west-2", "eu-central-1", "ap-southeast-1"];
 // Must match the region Stagehand's hosted API serves, otherwise attaching to a
 // pre-created session 400s ("Session is in region X but this API instance serves
@@ -41,6 +49,55 @@ function region(): BbRegion {
 
 function proxyCountry(): string {
   return process.env.IG_PROXY_COUNTRY ?? DEFAULT_PROXY_COUNTRY;
+}
+
+/** Raw parsed BB_BROWSER_OS (no plan guard). OPT-IN: unset => let Browserbase pick. */
+function browserOs(): BbOs | undefined {
+  const raw = (process.env.BB_BROWSER_OS ?? "").toLowerCase();
+  return (BB_OS_VALUES as readonly string[]).includes(raw) ? (raw as BbOs) : undefined;
+}
+
+/** The OS we can ACTUALLY send. Verified-by-experiment (browserbase 400): non-Linux
+ *  OS requires `verified:true`, which itself requires a Browserbase Enterprise plan
+ *  ("By default, we only support Linux"). So a non-linux pin without BB_VERIFIED is a
+ *  demo-killing footgun — we drop it (and warn) so session creation still succeeds.
+ *  To genuinely pin mac/windows: set BB_VERIFIED=true on an Enterprise project AND
+ *  re-run `pnpm ig:login` so login + runs share the OS. */
+function resolvedOs(): BbOs | undefined {
+  const os = browserOs();
+  if (!os) return undefined;
+  if (os !== "linux" && !verifiedEnabled()) {
+    console.warn(
+      `[browserbase] BB_BROWSER_OS=${os} needs BB_VERIFIED=true (Browserbase Enterprise); ignoring it and using the default OS to avoid a 400.`,
+    );
+    return undefined;
+  }
+  return os;
+}
+
+/** Verified Browsers (Browserbase Enterprise plan). Off unless BB_VERIFIED=true — a
+ *  non-Enterprise project rejects `verified:true` at session create. */
+function verifiedEnabled(): boolean {
+  return (process.env.BB_VERIFIED ?? "").toLowerCase() === "true";
+}
+
+/** Advanced anti-bot stealth (paid feature). Off unless BB_ADVANCED_STEALTH=true. */
+function advancedStealthEnabled(): boolean {
+  return (process.env.BB_ADVANCED_STEALTH ?? "").toLowerCase() === "true";
+}
+
+/** The resolved, env-derived browser identity. Both `pnpm ig:login` and every
+ *  automated run create sessions through createIgSession, so they share this
+ *  identity by construction — surfaced in the UI as an "identity match" check. */
+export function sessionIdentity(): SessionIdentity {
+  return {
+    os: resolvedOs() ?? null,
+    verified: verifiedEnabled(),
+    advancedStealth: advancedStealthEnabled(),
+    viewport: { ...VIEWPORT },
+    proxyCountry: proxyCountry(),
+    region: region(),
+  };
 }
 
 export function browserbaseProjectId(): string {
@@ -74,6 +131,9 @@ export async function createIgSession(
     opts.timeoutSeconds === undefined
       ? SESSION_TIMEOUT_SECONDS
       : Math.min(SESSION_TIMEOUT_MAX, Math.max(SESSION_TIMEOUT_MIN, Math.trunc(opts.timeoutSeconds)));
+  const os = resolvedOs();
+  const verified = verifiedEnabled();
+  const advancedStealth = advancedStealthEnabled();
   const session = await bb.sessions.create({
     projectId: browserbaseProjectId(),
     region: region(),
@@ -93,8 +153,15 @@ export async function createIgSession(
       solveCaptchas: true,
       blockAds: true,
       viewport: { ...VIEWPORT },
+      // Identity pinning (opt-in) for a consistent fingerprint across login + runs.
+      ...(os ? { os } : {}),
+      ...(verified ? { verified: true } : {}),
+      ...(advancedStealth ? { advancedStealth: true } : {}),
     },
   });
+  console.log(
+    `[browserbase] session ${session.id} identity ${JSON.stringify(sessionIdentity())}`,
+  );
   return session.id;
 }
 
