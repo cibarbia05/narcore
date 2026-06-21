@@ -1,0 +1,54 @@
+# Narcore local infrastructure.
+# Phase 0 ships a working Redis Stack so WT-B can integration-test for real.
+# WT-C is the SOLE editor of this file thereafter — it fleshes out the embedding
+# sidecar (llama.cpp serving nomic-embed-text-v2-moe on an OpenAI-compatible
+# /v1/embeddings endpoint). The Next.js app runs via `pnpm dev` (not containerized).
+
+services:
+  redis:
+    image: redis/redis-stack:latest
+    container_name: narcore-redis
+    ports:
+      - "6379:6379" # Redis
+      - "8001:8001" # RedisInsight (http://localhost:8001)
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # --- WT-C: embedding sidecar ---
+  # llama.cpp serving nomic-embed-text-v2-moe on an OpenAI-compatible POST /v1/embeddings.
+  # We use the prebuilt ggml-org image (no local Dockerfile): its ENTRYPOINT is
+  # /app/llama-server, so `command:` supplies args only. See infra/embedding/README.md.
+  embedding:
+    image: ghcr.io/ggml-org/llama.cpp:server # CPU build (multi-arch). GPU: see README (:server-cuda)
+    container_name: narcore-embedding
+    ports:
+      - "8080:8080" # OpenAI-compatible POST /v1/embeddings — EMBEDDING_API_URL=http://localhost:8080/v1/embeddings
+    # Pin the ggml-org GGUF (carries the v2-MoE pooling-assert conversion fix, #13534/#13689)
+    # at its only file, the Q8_0 quant (near-lossless — embedding similarity is precision-
+    # sensitive). --hf-file pins the exact file deterministically. The OpenAI /v1/embeddings
+    # endpoint requires a non-`none` pooling type, hence --pooling mean. The app applies the
+    # search_document:/search_query: prefixes itself — we must NOT.
+    command: >
+      -hf ggml-org/Nomic-Embed-Text-V2-GGUF
+      --hf-file nomic-embed-text-v2-moe-q8_0.gguf
+      --embeddings --pooling mean
+      --host 0.0.0.0 --port 8080
+      -c 2048 -b 2048 -ub 2048
+    volumes:
+      - llama-models:/root/.cache/llama.cpp # cache the GGUF across runs (first boot downloads ~490MB)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 300s # don't count health failures while the model downloads on first boot
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+  llama-models:
