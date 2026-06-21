@@ -17,10 +17,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RiskBadge } from "@/components/dashboard/risk-badge";
 import { AgentGrid } from "./agent-grid";
+import { EmbeddingHealthBadge } from "./embedding-health-badge";
 
+// "Latest leads" must mean *flagged* posts — not every scraped post. Filter to
+// flagged so benign captures never show up under a "leads" heading.
 const IG_LEADS_FILTER: PostsFilter = {
   status: "all",
-  flagged: "all",
+  flagged: "true",
   platform: "instagram",
   q: "",
   sort: "riskScore",
@@ -66,7 +69,10 @@ export function AgentsClient() {
   const workingCount = running
     ? agents.filter((a) => !AGENT_TERMINAL_STATUSES.includes(a.status)).length
     : 0;
-  const totalLeads = agents.reduce((sum, a) => sum + a.postsFound, 0);
+  // Scanned = every post the fleet ingested; leads = only the flagged ones. These
+  // are different numbers on purpose — most scraped posts are benign.
+  const totalScanned = agents.reduce((sum, a) => sum + a.postsFound, 0);
+  const totalLeads = agents.reduce((sum, a) => sum + a.flaggedFound, 0);
 
   async function handleLaunch() {
     setStarting(true);
@@ -149,11 +155,13 @@ export function AgentsClient() {
 
           <p className="ml-auto text-sm text-muted-foreground tabular-nums" aria-live="polite">
             {agents.length > 0
-              ? `${workingCount} working · ${totalLeads} leads captured`
+              ? `${workingCount} working · ${totalScanned} scanned · ${totalLeads} flagged`
               : "Idle"}
           </p>
         </div>
       </header>
+
+      <EmbeddingHealthBadge />
 
       <section aria-label="Live agents">
         {agents.length === 0 ? <EmptyGrid /> : <AgentGrid agents={agents} frozen={frozen} />}

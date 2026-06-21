@@ -31,6 +31,7 @@ function agentToHash(a: AgentRecord): Record<string, string> {
     status: a.status,
     currentAction: a.currentAction,
     postsFound: String(a.postsFound),
+    flaggedFound: String(a.flaggedFound),
     lastCaption: a.lastCaption ?? "",
     error: a.error ?? "",
     updatedAt: a.updatedAt,
@@ -47,6 +48,7 @@ function hashToAgent(h: Record<string, string>): AgentRecord {
     status: (h.status as AgentStatus) ?? "starting",
     currentAction: h.currentAction ?? "",
     postsFound: Number.parseInt(h.postsFound ?? "0", 10),
+    flaggedFound: Number.parseInt(h.flaggedFound ?? "0", 10),
     lastCaption: h.lastCaption ? h.lastCaption : null,
     error: h.error ? h.error : null,
     updatedAt: h.updatedAt ?? "",
@@ -90,6 +92,7 @@ export async function patchAgent(
   if (patch.status !== undefined) fields.status = patch.status;
   if (patch.currentAction !== undefined) fields.currentAction = patch.currentAction;
   if (patch.postsFound !== undefined) fields.postsFound = String(patch.postsFound);
+  if (patch.flaggedFound !== undefined) fields.flaggedFound = String(patch.flaggedFound);
   if (patch.lastCaption !== undefined) fields.lastCaption = patch.lastCaption ?? "";
   if (patch.error !== undefined) fields.error = patch.error ?? "";
   await client.hSet(agentKey(runId, idx), fields);

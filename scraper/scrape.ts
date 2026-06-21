@@ -113,7 +113,7 @@ export async function scrapeFeed(): Promise<number> {
     console.log(
       `[scrape] extracted ${posts.length} posts via ${useAi ? "AI" : "DOM"} from ${FEED_URL}`,
     );
-    return await ingestAll(posts);
+    return (await ingestAll(posts)).ingested;
   } finally {
     await stagehand.close();
   }

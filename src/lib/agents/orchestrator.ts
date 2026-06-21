@@ -42,12 +42,34 @@ function contextIds(): string[] {
     .filter(Boolean);
 }
 
-/** Default hashtags = the strongest single-token coded terms from the corpus, so
- *  the agents hunt the same slang the detector already knows. Overridable via
- *  IG_TARGET_TAGS or the request body. */
+// Corpus tokens that are dominated by benign usage on Instagram (music, food,
+// fitness, names, shopping) and just pull in normal posts. We keep them in the
+// scoring corpus but exclude them from the *target hashtags* — hunting #loud or
+// #molly returns mostly noise. The scanned-vs-flagged UI keeps even a noisy tag
+// honest; curation only raises the flagged hit-rate.
+const BENIGN_TAG_STOPLIST = new Set([
+  "blues", "down", "hard", "clean", "loud", "snow", "menu", "restock", "restockd",
+  "boots", "footballs", "tabs", "wax", "molly", "tina", "boomers", "lean", "cart",
+  "carts", "plug", "pressed", "onion", "eighth", "edibles", "k", "g", "back",
+]);
+
+/** Slugify a corpus term into a hashtag candidate: strip everything but a–z0–9 so
+ *  multi-word coded terms collapse into high-specificity tags ("addy plug" →
+ *  "addyplug", "double stack" → "doublestack"). */
+function slugifyTag(term: string): string {
+  return term.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/** Curated default hashtags. Derived from the seed corpus (so the agents hunt the
+ *  slang the detector knows) but biased toward specificity: coded compounds are
+ *  kept, bare benign words are dropped via BENIGN_TAG_STOPLIST. NOTE: Instagram
+ *  sanitizes the most explicit tags, so even curated tags yield a benign majority
+ *  — that's expected and surfaced as "scanned vs flagged" in the UI. Overridable
+ *  via IG_TARGET_TAGS or the request body. */
 function defaultTags(): string[] {
-  const terms = (seed.terms as Array<{ term: string }>).map((t) => t.term.toLowerCase());
-  const slugs = terms.filter((t) => /^[a-z0-9]{2,20}$/.test(t));
+  const slugs = (seed.terms as Array<{ term: string }>)
+    .map((t) => slugifyTag(t.term))
+    .filter((s) => /^[a-z0-9]{3,24}$/.test(s) && !BENIGN_TAG_STOPLIST.has(s));
   return Array.from(new Set(slugs));
 }
 
@@ -129,6 +151,7 @@ async function provisionAgent(
     status: "starting",
     currentAction: "provisioning browser",
     postsFound: 0,
+    flaggedFound: 0,
     lastCaption: null,
     error: null,
     updatedAt: "",

@@ -10,6 +10,7 @@ import {
   type AgentRun,
   type CorpusStats,
   type DraftedOutreach,
+  type HealthResponse,
   type LeadSummary,
   type Operation,
   type OperativeConfigResponse,
@@ -157,6 +158,12 @@ export function useOperation(operationId: string | null) {
  *  so no polling — fetched once and cached. */
 export function useOperativeConfig() {
   return useSWR<OperativeConfigResponse>("/api/operations", fetcher);
+}
+
+/** System health, incl. whether semantic scoring is on a real embedding provider
+ *  or has fallen back to mock vectors. Polled slowly — it rarely changes. */
+export function useHealth() {
+  return useSWR<HealthResponse>("/api/health", fetcher, { refreshInterval: 15000 });
 }
 
 export const startOperation = (postId: string, targetHandle?: string) =>

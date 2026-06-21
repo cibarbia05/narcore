@@ -99,6 +99,40 @@ export async function pingEmbeddings(): Promise<boolean> {
   }
 }
 
+export interface EmbeddingHealth {
+  mode: "auto" | "mock" | "live";
+  providersConfigured: number;
+  /** A real provider responded with a correctly-dimensioned vector. */
+  live: boolean;
+  /** Scoring is effectively running on deterministic mock vectors, so semantic
+   *  similarity is meaningless and the detector cannot legitimately flag. True
+   *  whenever mode is "mock", no provider is configured, or every provider fails. */
+  usingMock: boolean;
+}
+
+/** Report whether semantic scoring is backed by a real embedding provider or has
+ *  silently fallen back to mock vectors — surfaced in the UI so "0 flagged" is
+ *  read as a real result, not a dead detector. */
+export async function embeddingHealth(): Promise<EmbeddingHealth> {
+  const m = mode();
+  const provs = providers();
+
+  if (m === "mock" || provs.length === 0) {
+    return { mode: m, providersConfigured: provs.length, live: false, usingMock: true };
+  }
+
+  let live = false;
+  try {
+    const [vector] = await callOpenAIEmbeddings(provs[0], [EMBED_PREFIX.query + "ping"]);
+    live = vector.length === EMBEDDING_DIM;
+  } catch {
+    live = false;
+  }
+  // auto: a dead provider falls back to mock vectors. live: a dead provider makes
+  // ingest throw — either way, real semantic scoring is not happening.
+  return { mode: m, providersConfigured: provs.length, live, usingMock: !live };
+}
+
 async function embedViaProvider(
   provider: Provider,
   texts: string[],

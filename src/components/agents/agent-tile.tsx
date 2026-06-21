@@ -37,8 +37,8 @@ const TERMINAL_PANEL: Partial<
   done: {
     icon: CheckCircle2Icon,
     tone: "text-muted-foreground",
-    title: (a) => `Finished — ${a.postsFound} ${a.postsFound === 1 ? "lead" : "leads"}`,
-    hint: "Scored leads are in the detection queue.",
+    title: (a) => `Finished — ${a.postsFound} scanned · ${a.flaggedFound} flagged`,
+    hint: "Flagged leads are in the detection queue.",
   },
   blocked: {
     icon: LockIcon,
@@ -135,9 +135,15 @@ export function AgentTile({
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {/* lead count: a chip when dense (saves room), spelled out otherwise */}
-          <span className="font-mono text-xs tabular-nums text-muted-foreground">
-            {dense ? agent.postsFound : `${agent.postsFound} ${agent.postsFound === 1 ? "lead" : "leads"}`}
+          {/* scanned vs flagged: "lead" is reserved for flagged posts. Dense mode
+              collapses to flagged/scanned with a title for the full breakdown. */}
+          <span
+            className="font-mono text-xs tabular-nums text-muted-foreground"
+            title={`${agent.postsFound} scanned · ${agent.flaggedFound} flagged`}
+          >
+            {dense
+              ? `${agent.flaggedFound}/${agent.postsFound}`
+              : `${agent.postsFound} scanned · ${agent.flaggedFound} flagged`}
           </span>
           <AgentStatusBadge status={status} dense={dense} />
         </div>

@@ -2,7 +2,7 @@
 // WT-B) — it never imports it. Sequential posting keeps the demo watchable
 // (rows light up one by one) at the ~24-post scale; retries absorb the 503 the
 // pipeline returns while the embedding sidecar warms up.
-import type { ScrapedPost } from "../src/lib/types";
+import type { IngestResponse, ScrapedPost } from "../src/lib/types";
 
 const APP_URL = process.env.APP_URL ?? "http://localhost:3000";
 const INGEST_API_KEY = process.env.INGEST_API_KEY;
@@ -24,9 +24,18 @@ function headers(): Record<string, string> {
   return h;
 }
 
+/** The outcome of ingesting one post: whether it landed, and whether the detector
+ *  flagged it (score ≥ threshold). `flagged` is the *real* lead signal — distinct
+ *  from a post merely being scraped/ingested. */
+export interface IngestOutcome {
+  ok: boolean;
+  flagged: boolean;
+}
+
 /** POST one post, retrying with exponential backoff on 503 / network errors.
- *  Returns true on any 2xx (201 new + 200 dedup both count as ingested). */
-async function postOne(post: ScrapedPost): Promise<boolean> {
+ *  Any 2xx (201 new + 200 dedup) counts as ingested; the response carries the
+ *  scored post, so we read `post.flagged` back to distinguish leads from noise. */
+async function postOne(post: ScrapedPost): Promise<IngestOutcome> {
   const url = ingestUrl();
   let delay = BASE_DELAY_MS;
 
@@ -41,14 +50,24 @@ async function postOne(post: ScrapedPost): Promise<boolean> {
     } catch (err) {
       if (attempt === MAX_ATTEMPTS) {
         console.error(`[ingest] network error for ${post.post_link}:`, err);
-        return false;
+        return { ok: false, flagged: false };
       }
       await sleep(delay);
       delay *= 2;
       continue;
     }
 
-    if (res.ok) return true; // 200 (dedup) or 201 (new)
+    if (res.ok) {
+      // 200 (dedup) or 201 (new) — both return the scored post.
+      let flagged = false;
+      try {
+        const data = (await res.json()) as IngestResponse;
+        flagged = Boolean(data?.post?.flagged);
+      } catch {
+        /* non-JSON body — treat as ingested-but-unknown-flag */
+      }
+      return { ok: true, flagged };
+    }
 
     if (res.status === 503 && attempt < MAX_ATTEMPTS) {
       console.warn(
@@ -61,20 +80,30 @@ async function postOne(post: ScrapedPost): Promise<boolean> {
 
     const body = await res.text().catch(() => "");
     console.error(`[ingest] ${res.status} for ${post.post_link}: ${body.slice(0, 200)}`);
-    return false;
+    return { ok: false, flagged: false };
   }
-  return false;
+  return { ok: false, flagged: false };
 }
 
-/** POST every post sequentially. Returns the count successfully ingested. */
-export async function ingestAll(posts: ScrapedPost[]): Promise<number> {
+/** POST every post sequentially. Returns how many were ingested and, of those,
+ *  how many the detector actually flagged (the real lead count). */
+export async function ingestAll(
+  posts: ScrapedPost[],
+): Promise<{ ingested: number; flagged: number }> {
   let ingested = 0;
+  let flagged = 0;
   for (const post of posts) {
-    if (await postOne(post)) {
+    const outcome = await postOne(post);
+    if (outcome.ok) {
       ingested++;
-      console.log(`[ingest] ✓ ${post.post_username} (${post.platform ?? "unknown"})`);
+      if (outcome.flagged) flagged++;
+      console.log(
+        `[ingest] ✓ ${post.post_username} (${post.platform ?? "unknown"})${outcome.flagged ? " — FLAGGED" : ""}`,
+      );
     }
   }
-  console.log(`[ingest] ${ingested}/${posts.length} posts ingested → ${ingestUrl()}`);
-  return ingested;
+  console.log(
+    `[ingest] ${ingested}/${posts.length} posts ingested (${flagged} flagged) → ${ingestUrl()}`,
+  );
+  return { ingested, flagged };
 }

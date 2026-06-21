@@ -97,6 +97,7 @@ export async function runIgAgent(opts: IgAgentOptions): Promise<void> {
   });
 
   let postsFound = 0;
+  let flaggedFound = 0;
   const ingestedLinks = new Set<string>();
 
   try {
@@ -140,6 +141,7 @@ export async function runIgAgent(opts: IgAgentOptions): Promise<void> {
         status: "done",
         currentAction: "no posts found for this tag",
         postsFound: 0,
+        flaggedFound: 0,
       });
       return;
     }
@@ -197,11 +199,12 @@ export async function runIgAgent(opts: IgAgentOptions): Promise<void> {
         currentAction: `scoring ${post.post_username}`,
         lastCaption: post.post_caption.slice(0, 160),
       });
-      const n = await ingestAll([post]);
-      if (n > 0) {
+      const { ingested, flagged } = await ingestAll([post]);
+      if (ingested > 0) {
         ingestedLinks.add(link);
         postsFound += 1;
-        await patchAgent(runId, idx, { postsFound });
+        if (flagged > 0) flaggedFound += 1;
+        await patchAgent(runId, idx, { postsFound, flaggedFound });
       }
 
       await sleep(900); // gentle pacing — look human, avoid rate limits
@@ -209,8 +212,11 @@ export async function runIgAgent(opts: IgAgentOptions): Promise<void> {
 
     await patchAgent(runId, idx, {
       status: signal.aborted ? "stopped" : "done",
-      currentAction: signal.aborted ? "stopped by operator" : `done — ${postsFound} posts`,
+      currentAction: signal.aborted
+        ? "stopped by operator"
+        : `done — ${postsFound} scanned, ${flaggedFound} flagged`,
       postsFound,
+      flaggedFound,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

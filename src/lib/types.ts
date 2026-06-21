@@ -132,7 +132,8 @@ export interface AgentRecord {
   liveViewUrl: string; // debuggerFullscreenUrl — embedded read-only in the UI
   status: AgentStatus;
   currentAction: string; // human-readable "what it's doing right now"
-  postsFound: number; // distinct posts ingested so far
+  postsFound: number; // distinct posts scanned/ingested so far
+  flaggedFound: number; // of those, how many the detector flagged (the real leads)
   lastCaption: string | null; // most recent caption (a heartbeat for the UI)
   error: string | null;
   updatedAt: string; // ISO
@@ -361,6 +362,8 @@ export interface HealthResponse {
   ok: boolean;
   redis: boolean;
   embeddings: boolean;
+  embeddingMode: "auto" | "mock" | "live"; // configured EMBEDDING_MODE
+  embeddingLive: boolean; // a real provider is serving (vs deterministic mock vectors)
   corpusSize: number;
   postCount: number;
   modelVersion: string;

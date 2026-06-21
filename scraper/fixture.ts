@@ -6,5 +6,5 @@ import { ingestAll } from "./ingest";
 export async function runFixture(): Promise<number> {
   const posts = loadFeed().map(feedToScraped);
   console.log(`[fixture] loaded ${posts.length} synthetic posts from data/mock-feed.json`);
-  return ingestAll(posts);
+  return (await ingestAll(posts)).ingested;
 }
