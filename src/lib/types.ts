@@ -218,7 +218,23 @@ export interface SemanticDriftResponse {
     approved: number;
     posts: number;
   };
+  embeddingLive: boolean; // true => real provider vectors (structure is meaningful)
   generatedAt: string;
+}
+
+/** One real cosine-KNN corpus match for a post (the "why" edges on the map). */
+export interface SemanticNeighbor {
+  id: string; // corpus point id — matches a point on the map
+  text: string;
+  drug: string | null;
+  source: CorpusSource;
+  cosine: number; // cosine similarity in [-1,1]; higher = closer
+}
+
+/** GET /api/semantic-drift/neighbors?id=<postId> — neighbors + the post's risk split. */
+export interface SemanticNeighborsResponse {
+  neighbors: SemanticNeighbor[];
+  risk: RiskBreakdown;
 }
 
 // ----- Outreach / lead summary -----

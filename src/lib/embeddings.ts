@@ -88,6 +88,12 @@ export async function embedBatch(texts: string[], kind: EmbedKind): Promise<numb
   return texts.map((t) => mockVector(t));
 }
 
+/** Cheap, synchronous check: will real provider vectors be used (vs. structureless
+ *  mock fallback)? Drives the Vector Space "Live / Mock" badge. No network call. */
+export function embeddingsConfigured(): boolean {
+  return mode() !== "mock" && providers().length > 0;
+}
+
 /** Liveness check used by /api/health. Mock mode is always "available". */
 export async function pingEmbeddings(): Promise<boolean> {
   if (mode() === "mock" || providers().length === 0) return true;

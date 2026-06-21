@@ -19,8 +19,10 @@ import {
   EmbeddingUnavailableError,
   embed,
   embedBatch,
+  embeddingsConfigured,
 } from "./embeddings";
 import { slugify } from "./ids";
+import { projectVectors } from "./projection";
 import { computeRisk, detectHeuristics } from "./scoring";
 import {
   CORPUS_APPROVED_PREFIX,
@@ -44,6 +46,8 @@ import type {
   RiskBreakdown,
   SemanticDriftPoint,
   SemanticDriftResponse,
+  SemanticNeighbor,
+  SemanticNeighborsResponse,
   SemanticPointKind,
   SeedDataset,
   SuspiciousTerm,
@@ -392,8 +396,39 @@ export async function semanticDriftSnapshot(): Promise<SemanticDriftResponse> {
       approved: points.filter((point) => point.kind === "approved").length,
       posts: points.filter((point) => point.kind === "post").length,
     },
+    embeddingLive: embeddingsConfigured(),
     generatedAt: new Date().toISOString(),
   };
+}
+
+/** Real cosine-KNN neighbors for one post + its persisted risk breakdown — the
+ *  explainable "why this scored high". The query vector stays on the server; only
+ *  the matched corpus ids and cosine scores are returned. */
+export async function postNeighbors(
+  postId: string,
+  k = 5,
+): Promise<SemanticNeighborsResponse | null> {
+  // Map point ids are full Redis keys ("post:<hash>"); getPost/readVector add the
+  // prefix themselves, so strip it to avoid a double prefix.
+  const bareId = postId.startsWith(POST_PREFIX)
+    ? postId.slice(POST_PREFIX.length)
+    : postId;
+  const post = await getPost(bareId);
+  if (!post) return null;
+
+  const client = await connectRedis();
+  const binaryClient = client.withTypeMapping({ [RESP_TYPES.BLOB_STRING]: Buffer });
+  const queryVec = await readVector(binaryClient, POST_PREFIX + bareId, "queryVector");
+  if (!queryVec) return { neighbors: [], risk: post.risk };
+
+  const neighbors: SemanticNeighbor[] = (await corpusKnn(queryVec, k)).map((n) => ({
+    id: n.id,
+    text: n.text,
+    drug: n.drug,
+    source: n.source,
+    cosine: Math.round((1 - n.distance) * 1000) / 1000,
+  }));
+  return { neighbors, risk: post.risk };
 }
 
 async function readVector(
@@ -416,42 +451,27 @@ function isVectorEntry(entry: RedisVectorEntry | null): entry is RedisVectorEntr
 }
 
 function projectEntries(entries: RedisVectorEntry[]): SemanticDriftPoint[] {
-  const projected = entries.map((entry) => {
-    let x = 0;
-    let y = 0;
-    for (let i = 0; i < entry.vector.length; i++) {
-      x += entry.vector[i] * randomBasis(i, 17);
-      y += entry.vector[i] * randomBasis(i, 53);
-    }
-    return { entry, x, y };
-  });
-
-  const maxAbs = Math.max(
-    0.0001,
-    ...projected.flatMap((point) => [Math.abs(point.x), Math.abs(point.y)]),
+  const coords = new Map(
+    projectVectors(entries.map((e) => ({ id: e.id, vector: e.vector }))).map((p) => [
+      p.id,
+      p,
+    ]),
   );
-
-  return projected.map(({ entry, x, y }) => ({
-    id: entry.id,
-    kind: entry.kind,
-    label: entry.label,
-    text: entry.text,
-    category: entry.category,
-    drug: entry.drug,
-    x: round((x / maxAbs) * 0.9),
-    y: round((y / maxAbs) * 0.9),
-    riskScore: entry.riskScore,
-    flagged: entry.flagged,
-  }));
-}
-
-function randomBasis(index: number, salt: number): number {
-  const x = Math.sin((index + 1) * 12.9898 + salt * 78.233) * 43758.5453;
-  return (x - Math.floor(x)) * 2 - 1;
-}
-
-function round(n: number): number {
-  return Math.round(n * 1000) / 1000;
+  return entries.map((entry) => {
+    const point = coords.get(entry.id);
+    return {
+      id: entry.id,
+      kind: entry.kind,
+      label: entry.label,
+      text: entry.text,
+      category: entry.category,
+      drug: entry.drug,
+      x: point?.x ?? 0,
+      y: point?.y ?? 0,
+      riskScore: entry.riskScore,
+      flagged: entry.flagged,
+    };
+  });
 }
 
 function seedLabel(text: string): string {
