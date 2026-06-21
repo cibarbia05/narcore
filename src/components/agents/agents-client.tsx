@@ -61,9 +61,12 @@ export function AgentsClient() {
   const recentLeads = leads?.items.slice(0, 6) ?? [];
 
   const running = runId !== null && (run ? run.status === "running" : true);
-  const workingCount = agents.filter(
-    (a) => !AGENT_TERMINAL_STATUSES.includes(a.status),
-  ).length;
+  // Once the run is no longer running, freeze the tiles so a session torn down
+  // mid-extract can never flash the dead "Reconnect DevTools" iframe.
+  const frozen = run ? run.status !== "running" : false;
+  const workingCount = running
+    ? agents.filter((a) => !AGENT_TERMINAL_STATUSES.includes(a.status)).length
+    : 0;
   const totalLeads = agents.reduce((sum, a) => sum + a.postsFound, 0);
 
   async function handleLaunch() {
@@ -105,7 +108,7 @@ export function AgentsClient() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl space-y-6 px-6 py-10">
+    <main className="mx-auto max-w-[100rem] space-y-6 px-6 py-10">
       <header className="space-y-4">
         <div className="space-y-1">
           <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
@@ -137,11 +140,11 @@ export function AgentsClient() {
                 <Input
                   type="number"
                   min={1}
-                  max={5}
+                  max={20}
                   value={agentCount}
                   spellCheck={false}
                   onChange={(e) =>
-                    setAgentCount(Math.min(5, Math.max(1, Number(e.target.value) || 1)))
+                    setAgentCount(Math.min(20, Math.max(1, Number(e.target.value) || 1)))
                   }
                   className="h-8 w-16"
                   aria-label="Number of agents to launch"
@@ -167,7 +170,7 @@ export function AgentsClient() {
       </header>
 
       <section aria-label="Live agents">
-        {agents.length === 0 ? <EmptyGrid /> : <AgentGrid agents={agents} />}
+        {agents.length === 0 ? <EmptyGrid /> : <AgentGrid agents={agents} frozen={frozen} />}
       </section>
 
       {recentLeads.length > 0 ? (

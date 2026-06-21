@@ -153,7 +153,13 @@ export async function runIgAgent(opts: IgAgentOptions): Promise<void> {
         status: "extracting",
         currentAction: `reading post ${postsFound + 1}/${links.length}`,
       });
-      await page.goto(link, { waitUntil: "domcontentloaded" });
+      try {
+        await page.goto(link, { waitUntil: "domcontentloaded", timeoutMs: 20_000 });
+      } catch (err) {
+        // A single slow/failed post page shouldn't kill the agent — skip it.
+        console.warn(`[ig-agent ${idx}] nav failed for ${link}:`, err);
+        continue;
+      }
       await sleep(1200);
 
       const midBlock = detectBlock(page.url());

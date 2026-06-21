@@ -12,7 +12,7 @@
 // MUST run on a persistent Node process (local `pnpm dev` / `next start`), never
 // serverless — the loops outlive the request that started them.
 import { createIgSession, getLiveViewUrl, endSession } from "../browserbase";
-import { createRun, saveAgent, setRunStatus, getRun } from "./run-store";
+import { createRun, saveAgent, setRunStatus, getRun, patchAgent } from "./run-store";
 import type { AgentRecord, StartRunResponse } from "../types";
 import { AGENT_TERMINAL_STATUSES } from "../types";
 import seed from "../../../data/seed-terms.json";
@@ -78,7 +78,7 @@ export async function startRun(config: StartRunConfig = {}): Promise<StartRunRes
   }
 
   const requested =
-    config.agentCount ?? clampInt(process.env.IG_AGENT_COUNT, DEFAULT_AGENT_COUNT, 1, 10);
+    config.agentCount ?? clampInt(process.env.IG_AGENT_COUNT, DEFAULT_AGENT_COUNT, 1, 20);
   const tags = resolveTags(config.tags);
   const agentCount = Math.min(requested, tags.length || requested);
 
@@ -182,15 +182,30 @@ async function maybeFinishRun(runId: string): Promise<void> {
   }
 }
 
-/** Abort every agent in a run and release its sessions. */
+/** Abort every agent in a run and release its sessions. Marks the run + any
+ *  still-live agents "stopped" FIRST so the UI flips to clean terminal panels
+ *  immediately, before the sessions are torn down (avoids showing a dead
+ *  live-view iframe for agents caught mid-extract). */
 export async function stopRun(runId: string): Promise<void> {
+  await setRunStatus(runId, "stopped");
+
+  const run = await getRun(runId);
+  if (run) {
+    await Promise.all(
+      run.agents
+        .filter((a) => !AGENT_TERMINAL_STATUSES.includes(a.status))
+        .map((a) =>
+          patchAgent(runId, a.idx, { status: "stopped", currentAction: "stopped by operator" }),
+        ),
+    );
+  }
+
   const handle = runRegistry().get(runId);
   if (handle) {
     for (const c of handle.controllers) c.abort();
     await Promise.all(handle.sessionIds.map((sid) => endSession(sid)));
     runRegistry().delete(runId);
   }
-  await setRunStatus(runId, "stopped");
 }
 
 function clampInt(raw: string | undefined, fallback: number, min: number, max: number): number {
