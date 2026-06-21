@@ -20,8 +20,12 @@ export type Platform = (typeof PLATFORMS)[number];
 export const APPROVAL_STATUSES = ["pending", "approved", "rejected"] as const;
 export type ApprovalStatus = (typeof APPROVAL_STATUSES)[number];
 
-/** Provenance of a corpus vector: an original DEA/SAMHSA seed vs. a human-confirmed post. */
-export const CORPUS_SOURCES = ["seed", "approved"] as const;
+/** Provenance of a corpus vector:
+ *  - "seed":     an original DEA/SAMHSA seed term.
+ *  - "approved": a human-confirmed post caption (the analyst learning loop).
+ *  - "field":    coded slang a confirmed undercover operation extracted from the
+ *                seller's own messages (the operative→detection closed loop, R1). */
+export const CORPUS_SOURCES = ["seed", "approved", "field"] as const;
 export type CorpusSource = (typeof CORPUS_SOURCES)[number];
 
 export type HeuristicKind = "keyword" | "emoji" | "handoff" | "payment";
@@ -192,6 +196,25 @@ export interface CorpusStats {
   size: number;
   seed: number;
   approved: number;
+  field: number; // learned from confirmed operations (R1 field-intel loop)
+}
+
+// ----- Field intelligence (operative → detection closed loop, R1) -----
+
+/** One "the operative taught the detector" event, surfaced as a live ticker.
+ *  Persisted as an entry in the `stream:field-intel` Redis Stream. */
+export interface FieldIntelEvent {
+  id: string; // Redis stream entry id (monotonic)
+  at: string; // ISO
+  operationId: string;
+  handle: string; // seller handle the intel came from (no leading '@')
+  terms: string[]; // coded slang promoted into the corpus this operation
+  rescored: number; // pending posts re-scored against the grown corpus
+  newlyFlagged: number; // pending posts that flipped to flagged after re-scoring
+}
+
+export interface FieldIntelResponse {
+  events: FieldIntelEvent[];
 }
 
 // ----- Semantic drift visualization -----
@@ -337,6 +360,7 @@ export interface Operation {
   meetingTime: string | null;
   turnCount: number; // operative messages sent so far
   messages: OperationMessage[]; // full transcript, oldest first
+  priorIntel: string[]; // recalled cross-operation memory that primed this op (R2)
   error: string | null;
   startedAt: string; // ISO
   updatedAt: string; // ISO
@@ -354,6 +378,51 @@ export interface StartOperationResponse {
 export interface OperativeConfigResponse {
   allowlist: string[]; // normalized demo-adversary handles the operative may contact
   enforced: boolean;
+}
+
+// ----- Agent memory (R2 — Redis Iris cross-operation memory) -----
+
+/** One long-term memory the operative learned from a confirmed operation. */
+export interface AgentMemoryItem {
+  id: string;
+  text: string;
+  similarity: number | null; // recall similarity 0..1, when from a search
+  topics: string[];
+  entities: string[];
+}
+
+export interface AgentMemoryListResponse {
+  memories: AgentMemoryItem[];
+  available: boolean; // false if the memory server is unreachable
+}
+
+// ----- Browser session identity (B2 — consistent fingerprint = fewer checkpoints) -----
+
+/** The env-derived browser fingerprint a Browserbase session is created with. Login
+ *  and every automated run pass through one chokepoint (createIgSession), so they
+ *  share this by construction. `os` is null when unpinned (Browserbase default). */
+export interface SessionIdentity {
+  os: string | null;
+  verified: boolean;
+  advancedStealth: boolean;
+  viewport: { width: number; height: number };
+  proxyCountry: string;
+  region: string;
+}
+
+export type IdentityMatch = "ok" | "mismatch" | "unknown";
+
+/** Per-context comparison of the identity recorded at login vs. the current env. */
+export interface ContextIdentityStatus {
+  id: string; // masked context id
+  persisted: SessionIdentity | null; // identity recorded at `pnpm ig:login`
+  match: IdentityMatch;
+  diffs: string[]; // field names that differ when mismatched
+}
+
+export interface SessionIdentityResponse {
+  current: SessionIdentity;
+  contexts: ContextIdentityStatus[];
 }
 
 // ----- API envelopes -----

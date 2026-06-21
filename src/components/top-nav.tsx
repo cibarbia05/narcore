@@ -62,6 +62,15 @@ export function TopNav({
             >
               Fleet
             </Button>
+            <Button
+              variant="ghost"
+              size="lg"
+              className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
+              nativeButton={false}
+              render={<Link href="/memory" />}
+            >
+              Memory
+            </Button>
             <span className="h-5 w-px bg-border/60" aria-hidden="true" />
           </div>
 

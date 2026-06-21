@@ -8,6 +8,8 @@ import Link from "next/link";
 
 import type { Operation } from "@/lib/types";
 import { OperationPanel } from "./operation-panel";
+import { FieldIntelTicker } from "./field-intel-ticker";
+import { SessionIdentityBadge } from "./session-identity-badge";
 
 export function OperationView({
   operationId,
@@ -26,7 +28,11 @@ export function OperationView({
         Back to detection queue
       </Link>
 
+      <SessionIdentityBadge />
+
       <OperationPanel operationId={operationId} initial={initial} />
+
+      <FieldIntelTicker />
     </main>
   );
 }

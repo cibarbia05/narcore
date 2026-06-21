@@ -7,15 +7,18 @@
 import useSWR, { mutate } from "swr";
 import {
   OPERATION_TERMINAL_STATUSES,
+  type AgentMemoryListResponse,
   type AgentRun,
   type CorpusStats,
   type DraftedOutreach,
+  type FieldIntelResponse,
   type HealthResponse,
   type LeadSummary,
   type Operation,
   type OperativeConfigResponse,
   type Paginated,
   type Post,
+  type SessionIdentityResponse,
   type StartOperationResponse,
   type StartRunResponse,
 } from "./types";
@@ -96,6 +99,22 @@ export function useCorpusStats() {
   return useSWR<CorpusStats>("/api/corpus", fetcher, { refreshInterval: 3000 });
 }
 
+/** The live "operative → detector" learning ticker (R1 field-intel loop). */
+export function useFieldIntel() {
+  return useSWR<FieldIntelResponse>("/api/field-intel", fetcher, {
+    refreshInterval: 4000,
+    keepPreviousData: true,
+  });
+}
+
+/** The operative's long-term agent memory (R2 — Redis Iris). */
+export function useAgentMemory() {
+  return useSWR<AgentMemoryListResponse>("/api/memory", fetcher, {
+    refreshInterval: 5000,
+    keepPreviousData: true,
+  });
+}
+
 // ----- Mutations -----
 
 export const decide = (id: string, decision: "approved" | "rejected") =>
@@ -164,6 +183,13 @@ export function useOperativeConfig() {
  *  or has fallen back to mock vectors. Polled slowly — it rarely changes. */
 export function useHealth() {
   return useSWR<HealthResponse>("/api/health", fetcher, { refreshInterval: 15000 });
+}
+
+/** Browser-identity fingerprint + per-context match check (B2 war-room badge). */
+export function useSessionIdentity() {
+  return useSWR<SessionIdentityResponse>("/api/session-identity", fetcher, {
+    refreshInterval: 10000,
+  });
 }
 
 export const startOperation = (postId: string, targetHandle?: string) =>
