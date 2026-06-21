@@ -1,0 +1,178 @@
+// Narcore shared domain types — the frozen contract.
+//
+// This file has ZERO runtime imports. It is the dependency root: every other
+// module imports from it and it imports from nothing. Keep it that way so the
+// UI, API, scraper, and scripts all agree on one set of shapes.
+
+// ----- Enums (string unions; serializable, no TS `enum`) -----
+
+export const PLATFORMS = [
+  "instagram",
+  "facebook",
+  "x",
+  "tiktok",
+  "telegram",
+  "snapchat",
+  "unknown",
+] as const;
+export type Platform = (typeof PLATFORMS)[number];
+
+export const APPROVAL_STATUSES = ["pending", "approved", "rejected"] as const;
+export type ApprovalStatus = (typeof APPROVAL_STATUSES)[number];
+
+/** Provenance of a corpus vector: an original DEA/SAMHSA seed vs. a human-confirmed post. */
+export const CORPUS_SOURCES = ["seed", "approved"] as const;
+export type CorpusSource = (typeof CORPUS_SOURCES)[number];
+
+export type HeuristicKind = "keyword" | "emoji" | "handoff" | "payment";
+export type RiskBand = "low" | "elevated" | "high";
+
+// ----- Risk -----
+
+/** One explainable heuristic match — shown to a human and used in the lead summary. */
+export interface HeuristicHit {
+  kind: HeuristicKind;
+  term: string; // the matched token, e.g. "perc", "🍃", "telegram"
+  label: string; // human label, e.g. "Coded term: Percocet"
+  weight: number; // pre-cap contribution to the heuristic booster, >= 0
+}
+
+/** Fully explainable score. Stored alongside the post and shown in the UI / lead summary. */
+export interface RiskBreakdown {
+  semantic: number; // s in [0,1] — normalized max cosine similarity to the corpus
+  rawCosine: number; // raw max cosine in [-1,1] before normalization (transparency)
+  heuristicBoost: number; // h in [0,1] — capped sum of heuristic hits
+  score: number; // final risk in [0,1]
+  flagged: boolean; // score >= threshold
+  threshold: number; // threshold used (snapshot, so old scores stay interpretable)
+  matchedTermId: string | null; // corpus entry id of the nearest neighbor (the "why")
+  matchedTermText: string | null; // its term/caption text
+  hits: HeuristicHit[]; // every heuristic that fired
+  detectedCodeWords: string[]; // deduped term list for the lead summary
+  scoredAt: string; // ISO timestamp
+  modelVersion: string; // e.g. "nomic-embed-text-v2-moe@768" — invalidate on model change
+}
+
+// ----- Post -----
+
+/** Exactly what the Browserbase scraper produces. Mirrors the brief's field names. */
+export interface ScrapedPost {
+  agent_id: number; // which scraper agent found it
+  post_link: string; // canonical URL — also the dedup key
+  post_username: string;
+  post_caption: string;
+  post_date: string; // ISO 8601, UTC
+  platform?: Platform; // optional; ingest infers from post_link if absent
+}
+
+/** The stored, scored post. `id` is derived deterministically from post_link. */
+export interface Post {
+  id: string; // sha1(post_link) hex — stable, dedup-friendly
+  agentId: number;
+  postLink: string;
+  username: string;
+  caption: string;
+  platform: Platform;
+  postDate: string; // ISO — when it was posted
+  ingestedAt: string; // ISO — when we first stored it
+  scoredAt: string; // ISO — when risk was last computed
+  risk: RiskBreakdown;
+  riskScore: number; // denormalized from risk.score for sort/index
+  flagged: boolean; // denormalized from risk.flagged for filter
+  approvalStatus: ApprovalStatus;
+  approvedAt: string | null; // ISO when a human approved (drives the learning loop)
+  corpusEntryId: string | null; // if approved -> the corpus vector id we created
+}
+
+// ----- Suspicious corpus -----
+
+/** A seed slang entry as authored in the JSON dataset. */
+export interface SuspiciousTerm {
+  term: string; // e.g. "M30"
+  category: string; // e.g. "opioid", "stimulant", "cannabis", "handoff", "general"
+  drug: string; // canonical drug, e.g. "counterfeit oxycodone / fentanyl"
+  aliases?: string[]; // extra surface forms embedded together
+  note?: string; // human gloss for the lead summary
+}
+
+export interface SeedDataset {
+  version: string;
+  source: string;
+  terms: SuspiciousTerm[];
+}
+
+/** A vector entry living in Redis — either a seed term or a learned (approved) caption.
+ *  The float32 vector is stored in the same hash under field `vector`, but is never
+ *  part of this TS shape — we never ship vectors to the client. */
+export interface CorpusEntry {
+  id: string;
+  source: CorpusSource;
+  text: string; // the embedded text (term+aliases+note for seeds, caption for approved)
+  category: string; // seed category, or "learned" for approved
+  drug: string | null;
+  note: string | null;
+  postDate: string | null; // for approved entries: the source post's date
+  sourcePostId: string | null; // for approved entries: which post produced this
+  createdAt: string; // ISO
+  lastUsed: string; // ISO — refreshed on every KNN match; drives eviction
+}
+
+export interface CorpusStats {
+  size: number;
+  seed: number;
+  approved: number;
+}
+
+// ----- Outreach / lead summary -----
+
+export interface LeadSummary {
+  postId: string;
+  generatedAt: string; // ISO
+  handle: string; // @username
+  platform: Platform;
+  postLink: string;
+  postDate: string;
+  riskScore: number;
+  riskBand: RiskBand;
+  detectedCodeWords: string[];
+  matchedKnownTerm: string | null; // nearest corpus term text
+  matchedKnownTermDrug: string | null;
+  handoffApps: string[]; // encrypted-app handoffs detected, e.g. ["telegram"]
+  paymentCues: string[]; // e.g. ["CashApp"]
+  rationale: string; // one-paragraph "why flagged", built from hits
+  narrative: string; // longer LE-facing summary (template default; optional LLM enrich)
+}
+
+export interface DraftedOutreach {
+  to: string;
+  subject: string;
+  body: string;
+  channel: "email" | "platform_report";
+}
+
+// ----- API envelopes -----
+
+export interface ApiError {
+  error: { code: string; message: string; details?: unknown };
+}
+
+export interface Paginated<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface IngestResponse {
+  post: Post;
+  deduped: boolean;
+}
+
+export interface HealthResponse {
+  ok: boolean;
+  redis: boolean;
+  embeddings: boolean;
+  corpusSize: number;
+  postCount: number;
+  modelVersion: string;
+}
