@@ -33,3 +33,5 @@ Thumbs.db
 next-env.d.ts
 .vercel
 *.pem
+
+.agent
