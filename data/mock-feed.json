@@ -1,0 +1,197 @@
+{
+  "_disclaimer": "SYNTHETIC TEST DATA — every post below is fictional and AI-authored for the sole purpose of exercising Narcore's detection pipeline. No real accounts, people, links, or transactions are represented. Do not treat any handle, URL, or claim as genuine.",
+  "posts": [
+    {
+      "username": "@trapstar.plug",
+      "platform": "instagram",
+      "postLink": "https://instagram.com/p/feed-001",
+      "postDate": "2026-06-19T18:22:00Z",
+      "caption": "restockd 🍃 blue M30 blues back 💊 hmu on telegram, cashapp ready",
+      "kind": "coded"
+    },
+    {
+      "username": "@scriptpharma_",
+      "platform": "instagram",
+      "postLink": "https://instagram.com/p/feed-002",
+      "postDate": "2026-06-19T16:48:00Z",
+      "caption": "got percs n addy pressed clean 💊 dm signal to order, $40 each, zelle only",
+      "kind": "coded"
+    },
+    {
+      "username": "@nightowl.menu",
+      "platform": "facebook",
+      "postLink": "https://facebook.com/nightowl.menu/posts/feed-003",
+      "postDate": "2026-06-19T15:10:00Z",
+      "caption": "plug back open, full menu droppin tonight 🔌 tap in, serious buyers only",
+      "kind": "coded"
+    },
+    {
+      "username": "@zaza.lounge",
+      "platform": "x",
+      "postLink": "https://x.com/zaza.lounge/status/feed-004",
+      "postDate": "2026-06-19T13:35:00Z",
+      "caption": "loud packs n zaza in stock 🍃🔥 same day drop in the city, wickr me",
+      "kind": "coded"
+    },
+    {
+      "username": "@candyman.rx",
+      "platform": "telegram",
+      "postLink": "https://t.me/candymanrx/feed-005",
+      "postDate": "2026-06-19T11:02:00Z",
+      "caption": "blues 💊 xan bars 🔵 perc 30s available, escrow ok, btc or cashapp",
+      "kind": "coded"
+    },
+    {
+      "username": "@the.connect.co",
+      "platform": "snapchat",
+      "postLink": "https://snapchat.com/add/the.connect.co/feed-006",
+      "postDate": "2026-06-19T09:18:00Z",
+      "caption": "new batch ❄️ fishscale top shelf only 🤍 hmu fast before its gone",
+      "kind": "coded"
+    },
+    {
+      "username": "@molly.waters",
+      "platform": "instagram",
+      "postLink": "https://instagram.com/p/feed-007",
+      "postDate": "2026-06-18T23:54:00Z",
+      "caption": "rolls n molly for festival season 💧💊 telegram in bio to lock yours",
+      "kind": "coded"
+    },
+    {
+      "username": "@pharma.king88",
+      "platform": "tiktok",
+      "postLink": "https://tiktok.com/@pharma.king88/video/feed-008",
+      "postDate": "2026-06-18T21:40:00Z",
+      "caption": "addy for finals szn 📚⚡ legit scripts, dm to order, venmo friendly",
+      "kind": "coded"
+    },
+    {
+      "username": "@greenrush.atl",
+      "platform": "facebook",
+      "postLink": "https://facebook.com/greenrush.atl/posts/feed-009",
+      "postDate": "2026-06-18T19:27:00Z",
+      "caption": "exotic carts n edibles 🍫🍃 delivery in the A tonight, cashapp $$",
+      "kind": "coded"
+    },
+    {
+      "username": "@oxy.express",
+      "platform": "x",
+      "postLink": "https://x.com/oxy.express/status/feed-010",
+      "postDate": "2026-06-18T17:05:00Z",
+      "caption": "oxy 80s n roxis 💊 discreet ship nationwide, signal only no comments",
+      "kind": "coded"
+    },
+    {
+      "username": "@icebox.plug",
+      "platform": "telegram",
+      "postLink": "https://t.me/iceboxplug/feed-011",
+      "postDate": "2026-06-18T14:33:00Z",
+      "caption": "snow ❄️ clean white by the gram or the zip, escrow trusted, wickr me",
+      "kind": "coded"
+    },
+    {
+      "username": "@lean.dreams",
+      "platform": "instagram",
+      "postLink": "https://instagram.com/p/feed-012",
+      "postDate": "2026-06-18T12:11:00Z",
+      "caption": "act n wock 🟣 pints ready, 4s n 8s, double cup szn, serious only telegram",
+      "kind": "coded"
+    },
+    {
+      "username": "@bar.tab.xan",
+      "platform": "snapchat",
+      "postLink": "https://snapchat.com/add/bar.tab.xan/feed-013",
+      "postDate": "2026-06-18T10:46:00Z",
+      "caption": "school boy bars 🔵 30 a pop, bulk deals available, hit my cash app",
+      "kind": "coded"
+    },
+    {
+      "username": "@kushcorner.la",
+      "platform": "tiktok",
+      "postLink": "https://tiktok.com/@kushcorner.la/video/feed-014",
+      "postDate": "2026-06-18T08:59:00Z",
+      "caption": "top shelf loud 🍃 za only no caps, dm telegram for tonights drop",
+      "kind": "coded"
+    },
+    {
+      "username": "@powder.room.x",
+      "platform": "x",
+      "postLink": "https://x.com/powder.room.x/status/feed-015",
+      "postDate": "2026-06-18T07:24:00Z",
+      "caption": "white girl n perc 30 💊❄️ same day pickup, zelle or cashapp, no time wasters",
+      "kind": "coded"
+    },
+    {
+      "username": "@granola.bakes",
+      "platform": "instagram",
+      "postLink": "https://instagram.com/p/feed-016",
+      "postDate": "2026-06-19T17:30:00Z",
+      "caption": "blueberry muffins fresh out the oven 🫐 dm me for the recipe",
+      "kind": "benign"
+    },
+    {
+      "username": "@studio.prints",
+      "platform": "instagram",
+      "postLink": "https://instagram.com/p/feed-017",
+      "postDate": "2026-06-19T12:05:00Z",
+      "caption": "new art drop this weekend 🎨 limited run prints, link in bio",
+      "kind": "benign"
+    },
+    {
+      "username": "@coach.daniela",
+      "platform": "facebook",
+      "postLink": "https://facebook.com/coach.daniela/posts/feed-018",
+      "postDate": "2026-06-19T07:12:00Z",
+      "caption": "leg day done 💪 grabbing a smoothie, who is training with me tmrw",
+      "kind": "benign"
+    },
+    {
+      "username": "@backyard.blooms",
+      "platform": "instagram",
+      "postLink": "https://instagram.com/p/feed-019",
+      "postDate": "2026-06-18T20:40:00Z",
+      "caption": "the hydrangeas turned the prettiest blue this year 💙🌸 garden update soon",
+      "kind": "benign"
+    },
+    {
+      "username": "@retro.gamer.den",
+      "platform": "x",
+      "postLink": "https://x.com/retro.gamer.den/status/feed-020",
+      "postDate": "2026-06-18T18:15:00Z",
+      "caption": "finally beat the final boss 🎮 that loud synth soundtrack absolutely goes hard",
+      "kind": "benign"
+    },
+    {
+      "username": "@citylights.photo",
+      "platform": "tiktok",
+      "postLink": "https://tiktok.com/@citylights.photo/video/feed-021",
+      "postDate": "2026-06-18T16:02:00Z",
+      "caption": "golden hour rooftop set ❄️ caught the first snow flurries of the season ✨",
+      "kind": "benign"
+    },
+    {
+      "username": "@beanthere.coffee",
+      "platform": "facebook",
+      "postLink": "https://facebook.com/beanthere.coffee/posts/feed-022",
+      "postDate": "2026-06-18T13:48:00Z",
+      "caption": "single origin pour over this morning ☕ tap in and grab a cup with us",
+      "kind": "benign"
+    },
+    {
+      "username": "@vinyl.vault",
+      "platform": "x",
+      "postLink": "https://x.com/vinyl.vault/status/feed-023",
+      "postDate": "2026-06-18T11:20:00Z",
+      "caption": "this pressing sounds so loud and crisp 🔊 best plug for vintage speakers 🔌",
+      "kind": "benign"
+    },
+    {
+      "username": "@paws.and.claws",
+      "platform": "instagram",
+      "postLink": "https://instagram.com/p/feed-024",
+      "postDate": "2026-06-18T09:05:00Z",
+      "caption": "adopted this lil guy today 🐾 dm me for the shelter info if you want a friend too",
+      "kind": "benign"
+    }
+  ]
+}

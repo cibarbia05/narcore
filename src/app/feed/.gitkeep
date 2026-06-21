@@ -1,0 +1,2 @@
+# Owned by WT-D (Scraper). Synthetic social-feed page lives here:
+# src/app/feed/page.tsx renders coded + benign decoy posts that Browserbase scrapes.
