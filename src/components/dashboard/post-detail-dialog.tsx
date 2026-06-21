@@ -30,6 +30,10 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
+function formatScore(score: number): string {
+  return score.toFixed(1);
+}
+
 // The Caption-column trigger doubles as the row's "open details" affordance: a real
 // <button> (keyboard-operable, visible focus ring) styled as truncated caption text.
 export function PostDetailDialog({ post }: { post: Post }) {
@@ -58,16 +62,16 @@ export function PostDetailDialog({ post }: { post: Post }) {
               Risk breakdown
             </h3>
             <dl className="divide-y divide-border">
-              <Metric label="Final score" value={risk.score.toFixed(2)} />
+              <Metric label="Final score" value={formatScore(risk.score)} />
               <Metric label="Semantic similarity" value={risk.semantic.toFixed(2)} />
               <Metric label="Raw cosine" value={risk.rawCosine.toFixed(2)} />
               <Metric label="Heuristic boost" value={risk.heuristicBoost.toFixed(2)} />
-              <Metric label="Flag threshold" value={risk.threshold.toFixed(2)} />
+              <Metric label="Flag threshold" value={formatScore(risk.threshold)} />
             </dl>
             <p className="mt-1.5 text-xs text-muted-foreground">
               {risk.flagged
-                ? `Flagged — score ≥ ${SCORING.THRESHOLD.toFixed(2)} threshold.`
-                : `Cleared — score below the ${SCORING.THRESHOLD.toFixed(2)} threshold.`}
+                ? `Flagged — score ≥ ${formatScore(SCORING.THRESHOLD)} threshold.`
+                : `Cleared — score below the ${formatScore(SCORING.THRESHOLD)} threshold.`}
             </p>
           </div>
 

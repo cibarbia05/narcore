@@ -2,23 +2,25 @@
 // the API (server scoring). This REPLACES the brief's `distance*0.6 - 0.5`
 // formula (mathematically inconsistent with a 0.7 cosine threshold).
 //
-//   rawCosine = 1 - cosineDistance                                   // KNN top-1
-//   s = clamp01((rawCosine - SIM_FLOOR) / (1 - SIM_FLOOR))
+//   rawCosine = 1 - cosineDistance                                      // KNN top-1
+//   s = clamp01((rawCosine - SIM_FLOOR) / (SIM_CEILING - SIM_FLOOR))
 //   h = min(HEURISTIC_CAP, Σ weightᵢ)
-//   score = clamp01(W_SEM * s + (1 - W_SEM) * (h / HEURISTIC_CAP))
+//   base = clamp01(W_SEM * semanticCurve(s) + (1 - W_SEM) * (h / HEURISTIC_CAP))
+//   score = tieredScore(base)                                            // 1..100
 //   flagged = score >= THRESHOLD
 //
-// Semantics lead; heuristics corroborate. Heuristics alone max ≈0.20 — enough to
+// Semantics lead; heuristics corroborate. Heuristics alone stay low enough to
 // tip a borderline post over the line, never enough to flag a semantically-clean one.
 import { MODEL_VERSION } from "./model";
 import type { HeuristicHit, RiskBand, RiskBreakdown } from "./types";
 
 export const SCORING = {
-  W_SEM: 0.8,
-  SIM_FLOOR: 0.3,
+  W_SEM: 0.65,
+  SIM_FLOOR: 0.25,
+  SIM_CEILING: 0.6,
   HEURISTIC_CAP: 0.25,
-  THRESHOLD: clampNumber(Number(process.env.RISK_THRESHOLD ?? 0.7), 0, 1, 0.7),
-  HIGH_BAND: 0.85,
+  THRESHOLD: parseScoreThreshold(process.env.RISK_THRESHOLD, 70),
+  HIGH_BAND: 85,
 } as const;
 
 // --- explainable heuristic lexicons (short, editable; each hit carries a human label) ---
@@ -111,33 +113,27 @@ export function computeRisk(input: {
 }): RiskBreakdown {
   const { rawCosine, hits, matchedTermId, matchedTermText } = input;
   const normalizedCosine = clamp01(
-    (rawCosine - SCORING.SIM_FLOOR) / (1 - SCORING.SIM_FLOOR),
-  );
-
-  const SEM_MIDPOINT = 0.5;
-  const SEM_STEEPNESS = 10;
-
-  const semanticRisk = clamp01(
-    1 / (1 + Math.exp(-SEM_STEEPNESS * (normalizedCosine - SEM_MIDPOINT))),
+    (rawCosine - SCORING.SIM_FLOOR) / (SCORING.SIM_CEILING - SCORING.SIM_FLOOR),
   );
 
   const rawBoost = hits.reduce((acc, h) => acc + h.weight, 0);
   const boost = Math.min(SCORING.HEURISTIC_CAP, rawBoost);
   const boostNorm = SCORING.HEURISTIC_CAP > 0 ? boost / SCORING.HEURISTIC_CAP : 0;
 
-  const score = clamp01(
-    SCORING.W_SEM * semanticRisk + (1 - SCORING.W_SEM) * boostNorm,
+  const baseScore = clamp01(
+    SCORING.W_SEM * normalizedCosine + (1 - SCORING.W_SEM) * boostNorm,
   );
+  const score = tieredScore(baseScore);
 
   const detectedCodeWords = uniq(
     hits.filter((h) => h.kind !== "payment").map((h) => h.term),
   );
 
   return {
-    semantic: round(semanticRisk),
+    semantic: round(normalizedCosine),
     rawCosine: round(rawCosine),
     heuristicBoost: round(boost),
-    score: round(score),
+    score: roundScore(score),
     flagged: score >= SCORING.THRESHOLD,
     threshold: SCORING.THRESHOLD,
     matchedTermId,
@@ -167,8 +163,35 @@ function clampNumber(n: number, min: number, max: number, fallback: number): num
   return Math.max(min, Math.min(max, n));
 }
 
+function parseScoreThreshold(raw: string | undefined, fallback: number): number {
+  if (raw === undefined) return fallback;
+  const n = Number(raw);
+  if (Number.isNaN(n)) return fallback;
+  return clampNumber(n <= 1 ? n * 100 : n, 1, 100, fallback);
+}
+
+function tieredScore(baseScore: number): number {
+  if (baseScore <= 0.35) {
+    return interpolate(1, 35, baseScore / 0.35);
+  }
+  if (baseScore < 0.7) {
+    const t = (baseScore - 0.35) / 0.35;
+    return interpolate(36, 69, Math.pow(t, 1.08));
+  }
+  const t = (baseScore - 0.7) / 0.3;
+  return interpolate(70, 100, Math.pow(t, 0.55));
+}
+
+function interpolate(min: number, max: number, t: number): number {
+  return min + (max - min) * clamp01(t);
+}
+
 function round(n: number): number {
   return Math.round(n * 1e4) / 1e4;
+}
+
+function roundScore(n: number): number {
+  return Math.round(n * 10) / 10;
 }
 
 function uniq(items: string[]): string[] {

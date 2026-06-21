@@ -250,7 +250,7 @@ function PointPanel({ point }: { point: SemanticDriftPoint | null }) {
           className="shrink-0"
         >
           {point.kind === "post" && point.riskScore !== null
-            ? point.riskScore.toFixed(2)
+            ? point.riskScore.toFixed(0)
             : point.category || point.kind}
         </Badge>
       </div>
