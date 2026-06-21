@@ -18,6 +18,14 @@ export const POST_PREFIX = "post:";
 export const CORPUS_PREFIX = "corpus:";
 export const CORPUS_SEED_PREFIX = "corpus:seed:";
 export const CORPUS_APPROVED_PREFIX = "corpus:approved:";
+/** Slang learned from a confirmed undercover operation (R1 closed loop). Shares
+ *  idx:corpus (ON HASH PREFIX corpus:) so these become KNN neighbors for detection
+ *  with zero index changes; sliding-window TTL like approved entries. */
+export const CORPUS_FIELD_PREFIX = "corpus:field:";
+
+/** Append-only ticker of field-intel learning events ("operative learned X → N
+ *  posts re-flagged"). A Redis Stream, trimmed with MAXLEN ~ (R1). */
+export const FIELD_INTEL_STREAM = "stream:field-intel";
 
 /** Sliding-window TTL for learned `corpus:approved:*` vectors (SPEC §3.4 / §5.3).
  *  Seeds never expire; approved entries are refreshed on each KNN match and

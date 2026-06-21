@@ -114,4 +114,4 @@ export function findMockPost(id: string): Post | undefined {
   return MOCK_POSTS.find((p) => p.id === id) ?? MOCK_POSTS[0];
 }
 
-export const MOCK_CORPUS_STATS: CorpusStats = { size: 47, seed: 45, approved: 2 };
+export const MOCK_CORPUS_STATS: CorpusStats = { size: 47, seed: 45, approved: 2, field: 0 };

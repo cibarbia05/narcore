@@ -26,6 +26,7 @@ import { projectVectors } from "./projection";
 import { computeRisk, detectHeuristics } from "./scoring";
 import {
   CORPUS_APPROVED_PREFIX,
+  CORPUS_FIELD_PREFIX,
   CORPUS_INDEX,
   CORPUS_SEED_PREFIX,
   CORPUS_TTL_SECONDS,
@@ -240,6 +241,38 @@ export async function removeApprovedEntry(corpusEntryId: string): Promise<void> 
   await client.del(corpusEntryId);
 }
 
+/** Write a coded term a confirmed operation extracted from the seller's messages
+ *  as a learned FIELD vector with a sliding-window TTL. Lands in idx:corpus (same
+ *  HASH prefix `corpus:`) so it immediately becomes a KNN neighbor for detection —
+ *  no index change. Returns the corpus key. Caller is responsible for provenance
+ *  gating + near-duplicate de-dup (see field-intel.ts). */
+export async function addFieldEntry(
+  opId: string,
+  term: string,
+  drug: string | null,
+  note: string | null,
+  docVec: number[],
+): Promise<string> {
+  const client = await connectRedis();
+  const key = `${CORPUS_FIELD_PREFIX}${slugify(term)}-${opId}`;
+  const now = new Date().toISOString();
+  await client.hSet(key, {
+    source: "field",
+    text: term,
+    category: "field",
+    drug: drug ?? "",
+    note: note ?? "",
+    postDate: "",
+    sourcePostId: "",
+    sourceOpId: opId,
+    createdAt: now,
+    lastUsed: now,
+  });
+  await client.hSet(key, "vector", float32ToBuffer(docVec));
+  await client.expire(key, CORPUS_TTL_SECONDS);
+  return key;
+}
+
 /** Sliding-window LRU: refresh TTL + lastUsed for every approved neighbor matched. */
 export async function touchApprovedNeighbors(neighbors: Neighbor[]): Promise<void> {
   const approved = neighbors.filter((n) => n.id.startsWith(CORPUS_APPROVED_PREFIX));
@@ -277,11 +310,12 @@ export async function upsertSeedEntry(term: SuspiciousTerm, docVec: number[]): P
 export async function corpusStats(): Promise<CorpusStats> {
   const client = await connectRedis();
   await ensureIndexes();
-  const [seed, approved] = await Promise.all([
+  const [seed, approved, field] = await Promise.all([
     countCorpus("seed"),
     countCorpus("approved"),
+    countCorpus("field"),
   ]);
-  return { size: seed + approved, seed, approved };
+  return { size: seed + approved + field, seed, approved, field };
 
   async function countCorpus(source: CorpusSource): Promise<number> {
     const reply = await client.ft.search(CORPUS_INDEX, `@source:{${source}}`, {
@@ -350,12 +384,19 @@ export async function semanticDriftSnapshot(): Promise<SemanticDriftResponse> {
         const value = doc.value as Record<string, unknown>;
         const vector = await readVector(binaryClient, doc.id, "vector");
         if (!vector) return null;
-        const source = String(value.source ?? "") === "approved" ? "approved" : "seed";
+        const raw = String(value.source ?? "");
+        const source: SemanticPointKind =
+          raw === "approved" ? "approved" : raw === "field" ? "field" : "seed";
         const text = String(value.text ?? "");
         return {
           id: doc.id,
           kind: source,
-          label: source === "approved" ? "Learned Caption" : seedLabel(text),
+          label:
+            source === "approved"
+              ? "Learned Caption"
+              : source === "field"
+                ? "Field Intel"
+                : seedLabel(text),
           text,
           category: String(value.category ?? ""),
           drug: value.drug ? String(value.drug) : null,

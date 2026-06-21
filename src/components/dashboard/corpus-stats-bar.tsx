@@ -49,6 +49,10 @@ export function CorpusStatsBar({
           |
         </span>
         <Stat label="learned" value={stats?.approved ?? "—"} accent />
+        <span className="text-border" aria-hidden="true">
+          |
+        </span>
+        <Stat label="field intel" value={stats?.field ?? "—"} accent />
       </div>
 
       <Button onClick={onRescore} disabled={rescoring} size="sm">
