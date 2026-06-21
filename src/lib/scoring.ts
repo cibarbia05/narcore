@@ -110,18 +110,31 @@ export function computeRisk(input: {
   matchedTermText: string | null;
 }): RiskBreakdown {
   const { rawCosine, hits, matchedTermId, matchedTermText } = input;
-  const s = clamp01((rawCosine - SCORING.SIM_FLOOR) / (1 - SCORING.SIM_FLOOR));
+  const normalizedCosine = clamp01(
+    (rawCosine - SCORING.SIM_FLOOR) / (1 - SCORING.SIM_FLOOR),
+  );
+
+  const SEM_MIDPOINT = 0.5;
+  const SEM_STEEPNESS = 10;
+
+  const semanticRisk = clamp01(
+    1 / (1 + Math.exp(-SEM_STEEPNESS * (normalizedCosine - SEM_MIDPOINT))),
+  );
+
   const rawBoost = hits.reduce((acc, h) => acc + h.weight, 0);
   const boost = Math.min(SCORING.HEURISTIC_CAP, rawBoost);
   const boostNorm = SCORING.HEURISTIC_CAP > 0 ? boost / SCORING.HEURISTIC_CAP : 0;
-  const score = clamp01(SCORING.W_SEM * s + (1 - SCORING.W_SEM) * boostNorm);
+
+  const score = clamp01(
+    SCORING.W_SEM * semanticRisk + (1 - SCORING.W_SEM) * boostNorm,
+  );
 
   const detectedCodeWords = uniq(
     hits.filter((h) => h.kind !== "payment").map((h) => h.term),
   );
 
   return {
-    semantic: round(s),
+    semantic: round(semanticRisk),
     rawCosine: round(rawCosine),
     heuristicBoost: round(boost),
     score: round(score),
