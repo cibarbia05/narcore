@@ -21,3 +21,11 @@ coverage/
 Thumbs.db
 .idea/
 *.swp
+
+# --- Next.js / tooling ---
+.pnp
+.pnp.*
+*.tsbuildinfo
+next-env.d.ts
+.vercel
+*.pem
