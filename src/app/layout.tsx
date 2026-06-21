@@ -15,8 +15,8 @@ const fontMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "gov-dr-ai",
-    template: "%s · gov-dr-ai",
+    default: "Narcore",
+    template: "%s · Narcore",
   },
   description: "Build something the public can trust.",
 };

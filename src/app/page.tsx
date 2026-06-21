@@ -10,7 +10,7 @@ export default function Home() {
     <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden px-6 py-16">
       <TopNav placement="absolute" />
 
-      {/* Restrained background: faint orange glow + hairline grid, tokens only. */}
+      {/* Restrained background: faint azure glow + hairline grid, tokens only. */}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
         <div
           className="absolute inset-0 opacity-[0.04]"
@@ -40,7 +40,7 @@ export default function Home() {
         <div className="mt-8 flex items-center gap-3">
           <Logo className="size-9" />
           <span className="font-mono text-lg font-medium tracking-tight">
-            gov-dr-ai
+            narcore
           </span>
         </div>
 

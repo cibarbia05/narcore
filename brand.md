@@ -1,9 +1,9 @@
 # Brand & UI Guidelines
 
-The visual system for **gov-dr-ai** — a dark, focused interface for high-stakes
+The visual system for **narcore** — a dark, focused interface for high-stakes
 government tooling. The bar is *world-class production*, not demo. Restraint is the
 defining quality: a near-black ground, generous space, precise type, and a **single
-warm-orange accent** that earns attention because nothing else competes for it.
+authoritative-azure accent** that earns attention because nothing else competes for it.
 
 > **Source of truth:** all color/spacing/radius/motion values live as tokens in
 > [`src/app/globals.css`](./src/app/globals.css). This document explains *intent and
@@ -16,7 +16,7 @@ warm-orange accent** that earns attention because nothing else competes for it.
 
 1. **Clarity over decoration.** Every element earns its place. If it doesn't aid
    comprehension or action, remove it.
-2. **Restraint with the accent.** Orange marks the *one* thing that matters in a
+2. **Restraint with the accent.** Azure marks the *one* thing that matters in a
    view — the primary action, focus, or a live signal. Never use it for large
    fills or as a background wash.
 3. **Technical confidence.** Monospace for system/metadata, a clean grotesque for
@@ -32,27 +32,32 @@ Dark-first. The light theme exists for completeness, but the brand surface is da
 (`<html class="dark">`, set in [`layout.tsx`](./src/app/layout.tsx)). Colors are
 authored in **OKLCH** for perceptually-even steps and predictable contrast.
 
+> **Severity ≠ brand.** Risk bands use dedicated semantic colors — red (`--destructive`)
+> for *High*, amber (`--chart-2`) for *Elevated*, neutral for *Low* — and are
+> intentionally independent of the azure accent. The brand color signals trust and
+> action, never danger.
+
 ### Semantic roles (token → usage)
 
 | Token | Role |
 | --- | --- |
 | `--background` / `--foreground` | Page ground (near-black, faintly warm) and primary text (soft off-white). |
 | `--card` / `--popover` | Raised surfaces, one step above the ground. |
-| `--primary` / `--primary-foreground` | **The orange accent** + the near-black text that sits on it. Primary buttons, focus, key emphasis. |
+| `--primary` / `--primary-foreground` | **The azure accent** + the near-white text that sits on it. Primary buttons, focus, key emphasis. |
 | `--secondary` / `--accent` | Quiet neutral surfaces for hover and low-emphasis controls. |
 | `--muted` / `--muted-foreground` | Muted fills and secondary/supporting text. |
 | `--border` / `--input` | Hairline separators and field outlines — low-contrast, translucent white. |
-| `--ring` | Focus ring — orange, matches `--primary`. |
-| `--destructive` | Errors and irreversible actions only. |
-| `--chart-1…5` | Data viz — an orange-family ramp for cohesion. |
+| `--ring` | Focus ring — azure, matches `--primary`. |
+| `--destructive` | Errors, irreversible actions, and the **High** risk band. |
+| `--chart-1…5` | Data viz — an azure-anchored multi-hue ramp; `--chart-2` is the amber used for the **Elevated** risk band. |
 | `--sidebar-*` | App-shell surfaces (reserved for future navigation chrome). |
 
 ### The one-accent rule
 
 - ✅ Primary CTA, focus ring, a live/status dot, a single emphasized number.
-- ❌ Orange headings, orange body text, large orange panels, two competing accents
+- ❌ Azure headings, azure body text, large azure panels, two competing accents
   in one viewport.
-- Need a softer orange touch? Mix with the surface
+- Need a softer azure touch? Mix with the surface
   (`color-mix(in oklch, var(--primary) X%, transparent)`), as the hero glow does —
   don't introduce a new color.
 
@@ -104,12 +109,12 @@ clear AA. Re-check any new pairing before shipping.
 ## 6. Components
 
 - **Buttons** (shadcn/ui + Base UI, [`button.tsx`](./src/components/ui/button.tsx)):
-  - `default` → the orange primary action. **One primary per view.**
+  - `default` → the azure primary action. **One primary per view.**
   - `outline` / `secondary` / `ghost` → supporting actions.
   - `link` / `destructive` → inline navigation and dangerous actions.
   - Rendering a button as a link? Use `render={<a … />}` **and** `nativeButton={false}`
     so semantics and accessibility stay correct.
-- **Focus:** always visible — the orange `--ring` on `focus-visible`. Never remove it.
+- **Focus:** always visible — the azure `--ring` on `focus-visible`. Never remove it.
 - **Icons:** Lucide, sized to the text (`~1em`), used sparingly to reinforce meaning.
 - **Badges/labels:** mono, low-contrast, often paired with a small `--primary` dot
   for live/status signals.

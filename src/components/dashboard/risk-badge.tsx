@@ -3,12 +3,13 @@ import { cn } from "@/lib/utils";
 import { riskBand } from "@/lib/scoring";
 import type { RiskBand } from "@/lib/types";
 
-// Band -> token-based styling. Orange (primary) is reserved for the highest band so
-// the accent marks the one thing that matters; elevated uses the orange-family chart
-// ramp; low recedes into muted. Color is never the only signal — the score and an
+// Band -> token-based styling. Severity is intentionally independent of the brand
+// accent: high uses destructive (red = urgent), elevated uses amber (chart-2 =
+// caution), low recedes into muted. The azure brand accent is reserved for trust/UI
+// signals, never severity. Color is never the only signal — the score and an
 // sr-only band label are always present.
 const BAND: Record<RiskBand, { className: string; label: string }> = {
-  high: { className: "border-primary/30 bg-primary/15 text-primary", label: "High" },
+  high: { className: "border-destructive/30 bg-destructive/15 text-destructive", label: "High" },
   elevated: { className: "border-chart-2/30 bg-chart-2/15 text-chart-2", label: "Elevated" },
   low: { className: "border-transparent bg-muted text-muted-foreground", label: "Low" },
 };

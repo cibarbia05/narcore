@@ -37,7 +37,7 @@ export function TopNav({
         >
           <Logo className="size-7 shrink-0" />
           <span className="truncate font-mono text-sm font-medium tracking-tight">
-            gov-dr-ai
+            narcore
           </span>
         </Link>
         <div className="flex shrink-0 items-center gap-2">

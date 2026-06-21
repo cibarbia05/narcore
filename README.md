@@ -1,4 +1,4 @@
-# gov-dr-ai
+# narcore
 
 A dark, focused web foundation for high-stakes government tooling.
 
@@ -33,7 +33,7 @@ pnpm lint         # ESLint
 src/
   app/
     layout.tsx        # fonts, dark-default ThemeProvider, metadata
-    globals.css       # design tokens — single source of truth (dark + orange)
+    globals.css       # design tokens — single source of truth (dark + azure)
     page.tsx          # starter page
   components/
     ui/               # shadcn/ui primitives (e.g. button)
@@ -47,7 +47,7 @@ brand.md              # brand & UI guidelines
 
 ## Design system
 
-The visual language (dark surface, single orange accent, typography, motion) is
+The visual language (dark surface, single azure accent, typography, motion) is
 documented in **[`brand.md`](./brand.md)**. All color/spacing/radius/motion values
 live as tokens in **[`src/app/globals.css`](./src/app/globals.css)** — edit tokens
 there; `brand.md` explains intent.

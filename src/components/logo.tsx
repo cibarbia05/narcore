@@ -2,14 +2,14 @@ import { cn } from "@/lib/utils";
 
 /**
  * Brand mark: a rounded badge with an upward chevron — signalling recovery,
- * resilience, and forward momentum. Inherits the orange accent via `fill-primary`.
+ * resilience, and forward momentum. Inherits the azure accent via `fill-primary`.
  */
 export function Logo({ className }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 32 32"
       role="img"
-      aria-label="gov-dr-ai logo"
+      aria-label="narcore logo"
       className={cn("size-8", className)}
     >
       <rect x="1.5" y="1.5" width="29" height="29" rx="8" className="fill-primary" />
