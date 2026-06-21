@@ -1,11 +1,15 @@
 import { ArrowRight } from "lucide-react";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
+import { TopNav } from "@/components/top-nav";
 
 export default function Home() {
   return (
     <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden px-6 py-16">
+      <TopNav placement="absolute" />
+
       {/* Restrained background: faint orange glow + hairline grid, tokens only. */}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
         <div
@@ -54,10 +58,10 @@ export default function Home() {
             size="lg"
             className="h-11 px-5 text-sm"
             nativeButton={false}
-            render={<a href="#get-started" />}
+            render={<Link href="/dashboard" />}
           >
             Get started
-            <ArrowRight />
+            <ArrowRight aria-hidden="true" />
           </Button>
           <Button
             variant="outline"
