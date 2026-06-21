@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { PlayIcon, SquareIcon, RadioIcon } from "lucide-react";
 import {
   buildPostsQuery,
-  runScrape,
   startRun,
   stopRun,
   useRun,
@@ -98,30 +97,21 @@ export function AgentsClient() {
     }
   }
 
-  async function handleFixture() {
-    try {
-      const { ingested } = await runScrape(false);
-      toast.success(`Break-glass: ingested ${ingested} fixture posts`);
-    } catch {
-      toast.error("Fixture scrape failed.");
-    }
-  }
-
   return (
     <main className="mx-auto max-w-[100rem] space-y-6 px-6 py-10">
       <header className="space-y-4">
         <div className="space-y-1">
           <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
-            Narcore · Live Agents
+            Narcore · Fleet
           </p>
           <h1 className="text-2xl font-semibold tracking-tight text-balance">
-            Parallel Instagram surveillance
+            Parallel surveillance at scale
           </h1>
           <p className="text-pretty text-sm text-muted-foreground">
-            Five cloud browsers scan Instagram hashtags in parallel. Watch each one work, then
-            review the flagged leads in the{" "}
-            <Link href="/dashboard" className="underline underline-offset-2 hover:text-foreground">
-              detection queue
+            Many Browserbase cloud browsers scan Instagram hashtags in parallel. Watch each one
+            work, then review the flagged leads in the{" "}
+            <Link href="/command" className="underline underline-offset-2 hover:text-foreground">
+              Command Center
             </Link>
             .
           </p>
@@ -156,10 +146,6 @@ export function AgentsClient() {
               </Button>
             </>
           )}
-
-          <Button onClick={handleFixture} variant="ghost" size="sm" title="Populate the queue from the offline fixture if a live demo stalls">
-            Break-glass fixture
-          </Button>
 
           <p className="ml-auto text-sm text-muted-foreground tabular-nums" aria-live="polite">
             {agents.length > 0

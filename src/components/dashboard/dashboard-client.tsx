@@ -1,41 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
 import { InboxIcon, TriangleAlertIcon } from "lucide-react";
-import {
-  buildPostsQuery,
-  decide,
-  rescore,
-  runScrape,
-  useCorpusStats,
-  usePosts,
-  type PostsFilter,
-} from "@/lib/api-client";
-import type { Paginated, Post } from "@/lib/types";
+import { useDetectionQueue } from "@/lib/hooks/use-detection-queue";
 import { Button } from "@/components/ui/button";
 import { CorpusStatsBar } from "./corpus-stats-bar";
 import { FiltersBar } from "./filters-bar";
 import { PostsTable, PostsTableSkeleton } from "./posts-table";
-
-const DEFAULT_FILTER: PostsFilter = {
-  status: "all",
-  flagged: "all",
-  platform: "all",
-  q: "",
-  sort: "riskScore",
-  order: "desc",
-};
-
-/** Debounce a rapidly-changing value so the search box doesn't refetch per keystroke. */
-function useDebouncedValue<T>(value: T, delay: number): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const id = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(id);
-  }, [value, delay]);
-  return debounced;
-}
 
 function EmptyState({ onScrape, scraping }: { onScrape: () => void; scraping: boolean }) {
   return (
@@ -67,96 +37,21 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
 }
 
 export function DashboardClient() {
-  const [filter, setFilter] = useState<PostsFilter>(DEFAULT_FILTER);
-  const [rescoring, setRescoring] = useState(false);
-  const [scraping, setScraping] = useState(false);
-
-  const debouncedQ = useDebouncedValue(filter.q, 300);
-  const query = useMemo(
-    () => buildPostsQuery({ ...filter, q: debouncedQ }),
-    [filter, debouncedQ],
-  );
-
-  const { data, error, isLoading, mutate: mutatePosts } = usePosts(query);
-  const { data: corpus, mutate: mutateCorpus } = useCorpusStats();
-
-  const posts = data?.items ?? [];
-
-  async function handleApprove(post: Post, nextApproved: boolean) {
-    const decision = nextApproved ? "approved" : "rejected";
-    const approvedAt = nextApproved ? new Date().toISOString() : null;
-
-    try {
-      await mutatePosts(
-        async () => {
-          await decide(post.id, decision);
-          return undefined; // revalidate fetches the authoritative page
-        },
-        {
-          optimisticData: (current?: Paginated<Post>) => {
-            const base = current ?? { items: posts, total: posts.length, limit: 200, offset: 0 };
-            return {
-              ...base,
-              items: base.items.map((p) =>
-                p.id === post.id ? { ...p, approvalStatus: decision, approvedAt } : p,
-              ),
-            };
-          },
-          populateCache: false,
-          revalidate: true,
-          rollbackOnError: true,
-        },
-      );
-
-      // Approving grows the corpus — optimistically tick the learned counter,
-      // then revalidate against the source of truth.
-      if (nextApproved) {
-        void mutateCorpus(
-          (current) =>
-            current ? { ...current, approved: current.approved + 1, size: current.size + 1 } : current,
-          { revalidate: true },
-        );
-      } else {
-        void mutateCorpus();
-      }
-
-      toast.success(
-        nextApproved
-          ? `Approved ${post.username} — caption added to the corpus`
-          : `Marked ${post.username} as cleared`,
-      );
-    } catch {
-      toast.error("Couldn't save the decision. Try again.");
-    }
-  }
-
-  async function handleRescore() {
-    setRescoring(true);
-    try {
-      const { rescored } = await rescore("pending");
-      await Promise.all([mutatePosts(), mutateCorpus()]);
-      toast.success(
-        `Re-scored ${rescored} ${rescored === 1 ? "post" : "posts"} against learned terms`,
-      );
-    } catch {
-      toast.error("Re-evaluation failed. Try again.");
-    } finally {
-      setRescoring(false);
-    }
-  }
-
-  async function handleRunScrape() {
-    setScraping(true);
-    try {
-      const { ingested } = await runScrape(false);
-      await mutatePosts();
-      toast.success(`Ingested ${ingested} ${ingested === 1 ? "post" : "posts"}`);
-    } catch {
-      toast.error("Scrape failed. Try again.");
-    } finally {
-      setScraping(false);
-    }
-  }
+  const {
+    posts,
+    data,
+    error,
+    isLoading,
+    filter,
+    setFilter,
+    corpus,
+    rescoring,
+    scraping,
+    mutatePosts,
+    handleApprove,
+    handleRescore,
+    handleRunScrape,
+  } = useDetectionQueue();
 
   return (
     <main className="mx-auto max-w-6xl space-y-6 px-6 py-10">

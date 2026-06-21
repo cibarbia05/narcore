@@ -59,8 +59,11 @@ export function SemanticDriftClient() {
             Redis Vector Space
           </div>
           <h1 className="max-w-2xl text-2xl font-semibold tracking-tight text-balance">
-            Semantic Drift
+            Vector Space
           </h1>
+          <p className="max-w-2xl text-pretty text-sm text-muted-foreground">
+            Redis vector similarity over coded drug slang — proof the detection ranking is real.
+          </p>
         </div>
         <Button
           variant="outline"

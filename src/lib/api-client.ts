@@ -5,14 +5,18 @@
 // routes return Phase-0 mocks or the real WT-B backend. Reads poll every 3s for
 // live updates; mutations are awaited and the caller revalidates the SWR cache.
 import useSWR, { mutate } from "swr";
-import type {
-  AgentRun,
-  CorpusStats,
-  DraftedOutreach,
-  LeadSummary,
-  Paginated,
-  Post,
-  StartRunResponse,
+import {
+  OPERATION_TERMINAL_STATUSES,
+  type AgentRun,
+  type CorpusStats,
+  type DraftedOutreach,
+  type LeadSummary,
+  type Operation,
+  type OperativeConfigResponse,
+  type Paginated,
+  type Post,
+  type StartOperationResponse,
+  type StartRunResponse,
 } from "./types";
 
 /** Typed GET fetcher. Throws on non-2xx so SWR/await surfaces the error. */
@@ -28,7 +32,18 @@ async function postJson<T>(url: string, body?: unknown): Promise<T> {
     headers: { "content-type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`Request failed (${res.status})`);
+  if (!res.ok) {
+    // Surface the server's error envelope ({ error: { message } }) so callers can
+    // show the real reason (missing key, no login contexts, allowlist denial, …).
+    let message = `Request failed (${res.status})`;
+    try {
+      const data = (await res.json()) as { error?: { message?: string } };
+      if (data?.error?.message) message = data.error.message;
+    } catch {
+      /* non-JSON body — keep the status message */
+    }
+    throw new Error(message);
+  }
   return res.json() as Promise<T>;
 }
 
@@ -121,5 +136,33 @@ export const startRun = (body: { agentCount?: number; tags?: string[] } = {}) =>
 
 export const stopRun = (runId: string) =>
   postJson<{ stopped: boolean }>(`/api/agents/run/${runId}/stop`);
+
+// ----- Operative ("Operations") -----
+
+/** Poll one operation's live state. Null id disables the request. Polls every 2s
+ *  until the operation reaches a terminal state, then stops. */
+export function useOperation(operationId: string | null) {
+  return useSWR<{ operation: Operation }>(
+    operationId ? `/api/operations/${operationId}` : null,
+    fetcher,
+    {
+      refreshInterval: (latest) =>
+        latest && OPERATION_TERMINAL_STATUSES.includes(latest.operation.status) ? 0 : 2000,
+      keepPreviousData: true,
+    },
+  );
+}
+
+/** The operative target allowlist (for gating the "Engage" action). Rarely changes,
+ *  so no polling — fetched once and cached. */
+export function useOperativeConfig() {
+  return useSWR<OperativeConfigResponse>("/api/operations", fetcher);
+}
+
+export const startOperation = (postId: string, targetHandle?: string) =>
+  postJson<StartOperationResponse>("/api/operations", { postId, targetHandle });
+
+export const stopOperation = (operationId: string) =>
+  postJson<{ stopped: boolean }>(`/api/operations/${operationId}/stop`);
 
 export { mutate };

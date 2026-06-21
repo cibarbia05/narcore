@@ -27,8 +27,12 @@ const DEFAULT_PROXY_COUNTRY = "US";
 // Desktop viewport — Instagram's web feed renders captions inline at this size.
 const VIEWPORT = { width: 1280, height: 800 } as const;
 // Session ceiling (seconds, 60–21600). A hard backstop so a leaked session can
-// never bill or hold a concurrency slot forever during a demo.
+// never bill or hold a concurrency slot forever during a demo. Scraper agents are
+// short-lived (default 600s); the operative negotiates over minutes and passes a
+// larger value via `createIgSession(ctx, { timeoutSeconds })`.
 const SESSION_TIMEOUT_SECONDS = 600;
+const SESSION_TIMEOUT_MIN = 60;
+const SESSION_TIMEOUT_MAX = 21_600;
 
 function region(): BbRegion {
   const raw = process.env.IG_REGION;
@@ -63,9 +67,13 @@ export function getBrowserbase(): Browserbase {
  *  hand-typed login is saved. Returns the new session id. */
 export async function createIgSession(
   contextId: string,
-  opts: { persist?: boolean } = {},
+  opts: { persist?: boolean; timeoutSeconds?: number } = {},
 ): Promise<string> {
   const bb = getBrowserbase();
+  const timeout =
+    opts.timeoutSeconds === undefined
+      ? SESSION_TIMEOUT_SECONDS
+      : Math.min(SESSION_TIMEOUT_MAX, Math.max(SESSION_TIMEOUT_MIN, Math.trunc(opts.timeoutSeconds)));
   const session = await bb.sessions.create({
     projectId: browserbaseProjectId(),
     region: region(),
@@ -73,7 +81,7 @@ export async function createIgSession(
     // fetch the live-view URL for the UI) and Stagehand attaching to it. We
     // explicitly release it in endSession().
     keepAlive: true,
-    timeout: SESSION_TIMEOUT_SECONDS,
+    timeout,
     proxies: [
       {
         type: "browserbase",

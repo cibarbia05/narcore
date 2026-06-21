@@ -247,6 +247,98 @@ export interface DraftedOutreach {
   channel: "email" | "platform_report";
 }
 
+// ----- Operative agent (undercover DM negotiation) -----
+
+/** Lifecycle of one operative negotiation. Drives the operation view's status.
+ *  - opening:        attaching, opening the DM thread, sending the first message
+ *  - awaiting_reply: message sent, polling the thread for the seller's response
+ *  - analyzing:      a reply arrived; the brain is assessing deal/location
+ *  - negotiating:    mid-conversation, working toward both confirmations
+ *  - confirmed:      deal AND location confirmed (success, terminal)
+ *  - rejected:       the seller declined / went cold-hostile (terminal)
+ *  - stalled:        hit the turn or time budget without both confirmations (terminal)
+ *  - blocked:        login wall / checkpoint stopped the operative (terminal)
+ *  - error:          unexpected failure (terminal)
+ *  - stopped:        aborted by the operator (terminal) */
+export const OPERATION_STATUSES = [
+  "opening",
+  "awaiting_reply",
+  "analyzing",
+  "negotiating",
+  "confirmed",
+  "rejected",
+  "stalled",
+  "blocked",
+  "error",
+  "stopped",
+] as const;
+export type OperationStatus = (typeof OPERATION_STATUSES)[number];
+
+/** Terminal states — the operative loop has ended and its session is released. */
+export const OPERATION_TERMINAL_STATUSES: readonly OperationStatus[] = [
+  "confirmed",
+  "rejected",
+  "stalled",
+  "blocked",
+  "error",
+  "stopped",
+];
+
+/** One turn in the negotiation transcript. */
+export interface OperationMessage {
+  role: "operative" | "seller";
+  text: string;
+  at: string; // ISO
+}
+
+/** The brain's structured read of the conversation after a seller reply. Computed
+ *  fresh each turn so the UI can show "Deal ✓ · Location ✗" while still mid-talk. */
+export interface OperationAnalysis {
+  dealConfirmed: boolean; // seller agreed to sell + transact
+  locationConfirmed: boolean; // seller named/agreed a meeting place
+  meetingLocation: string | null; // the agreed place, if any
+  meetingTime: string | null; // the agreed time, if any
+  rejection: boolean; // seller declined / the lead is dead
+  confidence: number; // 0..1 — the brain's confidence in this read
+  reasoning: string; // one-line "why" for the operator
+}
+
+/** Live, pollable state of one operative negotiation. Owns its own Redis hash +
+ *  an append-only message list. */
+export interface Operation {
+  id: string;
+  postId: string; // the flagged lead this came from
+  handle: string; // seller handle being engaged (no leading '@')
+  platform: Platform;
+  sessionId: string; // Browserbase session id
+  liveViewUrl: string; // debuggerFullscreenUrl — embedded read-only in the UI
+  status: OperationStatus;
+  currentAction: string; // human-readable "what it's doing right now"
+  dealConfirmed: boolean;
+  locationConfirmed: boolean;
+  meetingLocation: string | null;
+  meetingTime: string | null;
+  turnCount: number; // operative messages sent so far
+  messages: OperationMessage[]; // full transcript, oldest first
+  error: string | null;
+  startedAt: string; // ISO
+  updatedAt: string; // ISO
+}
+
+/** POST /api/operations response — returned immediately so the view can render the
+ *  live-view iframe before the negotiation has progressed. */
+export interface StartOperationResponse {
+  operationId: string;
+  operation: Operation;
+}
+
+/** GET /api/operations response — the target allowlist + whether it's enforced, so
+ *  the dashboard can gate the "Engage" action client-side (server still enforces). */
+export interface OperativeConfigResponse {
+  allowlist: string[]; // normalized demo-adversary handles the operative may contact
+  enforced: boolean;
+}
+
 // ----- API envelopes -----
 
 export interface ApiError {

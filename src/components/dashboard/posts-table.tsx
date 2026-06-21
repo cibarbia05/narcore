@@ -14,11 +14,12 @@ import { cn } from "@/lib/utils";
 import type { Post } from "@/lib/types";
 import { ApproveSwitch } from "./approve-switch";
 import { CodeWordChips } from "./code-word-chips";
+import { EngageButton } from "./engage-button";
 import { OutreachDialog } from "./outreach-dialog";
 import { PostDetailDialog } from "./post-detail-dialog";
 import { RiskBadge } from "./risk-badge";
 
-const COLUMNS = ["Account", "Platform", "Caption", "Risk", "Approval", "Outreach"] as const;
+const COLUMNS = ["Account", "Platform", "Caption", "Risk", "Approval", "Outreach", "Operative"] as const;
 
 function HeadRow() {
   return (
@@ -37,20 +38,32 @@ function HeadRow() {
 export function PostsTable({
   posts,
   onApprove,
+  onEngaged,
+  activePostId,
 }: {
   posts: Post[];
   onApprove: (post: Post, nextApproved: boolean) => void;
+  // Command Center: capture the inline-launched operation + highlight its row.
+  onEngaged?: (operationId: string, post: Post) => void;
+  activePostId?: string;
 }) {
   return (
-    <div className="overflow-hidden rounded-lg border">
+    // overflow-x-auto: if the full table ever exceeds a narrow container (e.g. the
+    // Command Center pane), it scrolls WITHIN its own box rather than the whole page.
+    <div className="overflow-x-auto rounded-lg border">
       <Table>
         <HeadRow />
         <TableBody>
           {posts.map((post) => (
             <TableRow
               key={post.id}
-              // Below-threshold (cleared) posts are visually de-emphasized.
-              className={cn("align-top", !post.flagged && "opacity-45")}
+              // Below-threshold (cleared) posts are visually de-emphasized; the post with
+              // a live operation is highlighted so the queue row ties to the war room.
+              className={cn(
+                "align-top",
+                !post.flagged && "opacity-45",
+                post.id === activePostId && "bg-primary/5 ring-1 ring-inset ring-primary/30",
+              )}
             >
               <TableCell className="font-mono text-xs">{post.username}</TableCell>
               <TableCell>
@@ -70,6 +83,9 @@ export function PostsTable({
               </TableCell>
               <TableCell>
                 <OutreachDialog post={post} />
+              </TableCell>
+              <TableCell>
+                <EngageButton post={post} onEngaged={onEngaged} />
               </TableCell>
             </TableRow>
           ))}
@@ -92,6 +108,7 @@ export function PostsTableSkeleton({ rows = 5 }: { rows?: number }) {
               <TableCell><Skeleton className="h-4 w-full max-w-md" /></TableCell>
               <TableCell><Skeleton className="h-5 w-14 rounded-full" /></TableCell>
               <TableCell><Skeleton className="h-5 w-8 rounded-full" /></TableCell>
+              <TableCell><Skeleton className="h-7 w-20" /></TableCell>
               <TableCell><Skeleton className="h-7 w-20" /></TableCell>
             </TableRow>
           ))}

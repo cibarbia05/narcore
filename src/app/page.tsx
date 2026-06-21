@@ -31,10 +31,10 @@ export default function Home() {
         />
       </div>
 
-      <div className="flex w-full max-w-xl flex-col items-center text-center">
+      <div className="flex w-full max-w-2xl flex-col items-center text-center">
         <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/50 px-3 py-1 font-mono text-xs text-muted-foreground">
           <span className="size-1.5 rounded-full bg-primary" />
-          Production-ready scaffold
+          Law-enforcement AI for illicit-drug trafficking
         </span>
 
         <div className="mt-8 flex items-center gap-3">
@@ -45,22 +45,36 @@ export default function Home() {
         </div>
 
         <h1 className="mt-8 text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
-          Build something the public can trust.
+          Find the dealer. Make the deal. Build the case.
         </h1>
 
-        <p className="mt-5 max-w-md text-base text-pretty text-muted-foreground sm:text-lg">
-          A dark, focused foundation for high-stakes government tooling — built on
-          Next.js, TypeScript, and a precise design system.
+        <p className="mt-5 max-w-xl text-base text-pretty text-muted-foreground sm:text-lg">
+          Narcore scans social platforms for drug ads, sends an autonomous undercover operative to
+          confirm the deal and meeting, and exports a court-ready case report.
         </p>
+
+        {/* The three-stage pipeline at a glance — the spine of the whole product. */}
+        <ol className="mt-8 flex flex-wrap items-center justify-center gap-2 font-mono text-xs text-muted-foreground">
+          {[
+            "1 Detect — Redis vector ranking",
+            "2 Engage — Claude operative via Browserbase",
+            "3 Resolve — case report",
+          ].map((step, i) => (
+            <li key={step} className="flex items-center gap-2">
+              {i > 0 ? <span className="text-muted-foreground/40" aria-hidden="true">›</span> : null}
+              <span className="rounded-full border border-border bg-card/50 px-3 py-1">{step}</span>
+            </li>
+          ))}
+        </ol>
 
         <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row">
           <Button
             size="lg"
             className="h-11 px-5 text-sm"
             nativeButton={false}
-            render={<Link href="/dashboard" />}
+            render={<Link href="/command" />}
           >
-            Get started
+            Open Command Center
             <ArrowRight aria-hidden="true" />
           </Button>
           <Button
@@ -68,15 +82,15 @@ export default function Home() {
             size="lg"
             className="h-11 px-5 text-sm"
             nativeButton={false}
-            render={<a href="#docs" />}
+            render={<Link href="/feed" />}
           >
-            View documentation
+            See the live feed
           </Button>
         </div>
       </div>
 
       <p className="absolute bottom-6 font-mono text-xs text-muted-foreground/70">
-        Next.js · TypeScript · Tailwind · shadcn/ui
+        Redis vector search · Browserbase · Claude Sonnet
       </p>
     </main>
   );

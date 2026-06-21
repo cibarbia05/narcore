@@ -40,42 +40,39 @@ export function TopNav({
             narcore
           </span>
         </Link>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          {/* Supporting proof points (Redis vector space, Browserbase fleet) behind the
+              core flow — visually subordinate to the primary Command Center button. */}
+          <div className="hidden items-center gap-2 sm:flex">
+            <Button
+              variant="ghost"
+              size="lg"
+              className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
+              nativeButton={false}
+              render={<Link href="/semantic-drift" />}
+            >
+              Vector Space
+            </Button>
+            <Button
+              variant="ghost"
+              size="lg"
+              className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
+              nativeButton={false}
+              render={<Link href="/agents" />}
+            >
+              Fleet
+            </Button>
+            <span className="h-5 w-px bg-border/60" aria-hidden="true" />
+          </div>
+
+          {/* The whole flow — Detect → Engage → Resolve, on one screen. */}
           <Button
-            variant="outline"
             size="lg"
             className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
             nativeButton={false}
-            render={<Link href="/feed" />}
+            render={<Link href="/command" />}
           >
-            Feed
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
-            nativeButton={false}
-            render={<Link href="/agents" />}
-          >
-            Live Agents
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
-            nativeButton={false}
-            render={<Link href="/semantic-drift" />}
-          >
-            Semantic Drift
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
-            nativeButton={false}
-            render={<Link href="/dashboard" />}
-          >
-            Dashboard
+            Command Center
             <ArrowRight aria-hidden="true" />
           </Button>
         </div>

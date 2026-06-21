@@ -35,9 +35,17 @@ export const startRunSchema = z.object({
   tags: z.array(z.string().min(1)).max(20).optional(),
 });
 
+export const startOperationSchema = z.object({
+  // The flagged post (lead) to engage. The seller handle is derived from it.
+  postId: z.string().min(1),
+  // Optional explicit target handle override; still allowlist-checked server-side.
+  targetHandle: z.string().min(1).optional(),
+});
+
 export type ScrapedPostInput = z.infer<typeof scrapedPostSchema>;
 export type DecisionInput = z.infer<typeof decisionSchema>;
 export type OutreachInput = z.infer<typeof outreachSchema>;
 export type RescoreInput = z.infer<typeof rescoreSchema>;
 export type ScrapeInput = z.infer<typeof scrapeSchema>;
 export type StartRunInput = z.infer<typeof startRunSchema>;
+export type StartOperationInput = z.infer<typeof startOperationSchema>;
