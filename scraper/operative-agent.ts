@@ -21,6 +21,8 @@ import type { LeadSummary, OperationMessage } from "../src/lib/types";
 import { appendMessage, patchOperation } from "../src/lib/agents/operation-store";
 import { endSession } from "../src/lib/browserbase";
 import { negotiate } from "../src/lib/operative-brain";
+import { learnFromConfirmedOperation } from "../src/lib/field-intel";
+import { recallMemories, pinOperationMemory } from "../src/lib/agent-memory";
 
 const DEFAULT_MODEL = "anthropic/claude-sonnet-4-6";
 
@@ -81,6 +83,10 @@ export async function runOperativeAgent(opts: OperativeAgentOptions): Promise<vo
     return;
   }
 
+  // B3: opt-in Stagehand action caching (zero-token replay of stable nav chrome).
+  // Off by default so a stale cached action can never surprise a live demo; set
+  // OPERATIVE_STAGEHAND_CACHE_DIR to enable. Concurrent operatives need distinct dirs.
+  const cacheDir = process.env.OPERATIVE_STAGEHAND_CACHE_DIR;
   const stagehand = new Stagehand({
     env: "BROWSERBASE",
     apiKey,
@@ -91,6 +97,7 @@ export async function runOperativeAgent(opts: OperativeAgentOptions): Promise<vo
       modelName: process.env.SCRAPE_MODEL ?? DEFAULT_MODEL,
       apiKey: process.env.ANTHROPIC_API_KEY,
     },
+    ...(cacheDir ? { cacheDir } : {}),
   });
 
   // Hoisted so the send guard and helpers can read the current URL. A DM thread is
@@ -282,13 +289,17 @@ export async function runOperativeAgent(opts: OperativeAgentOptions): Promise<vo
       return [];
     };
 
-    // 2. Open the DM thread.
-    //    Path A (quick): a profile "Message" button, if Instagram shows one.
-    //    Path B (reliable, verified end-to-end): the DM inbox search finds ANY account
-    //    — including non-followers, under "More accounts" — and clicking the result
-    //    opens/creates the /direct/t/ thread. (The compose dialog's "To" box only
-    //    surfaces existing connections, so we deliberately don't use it.)
-    const openDmThread = async (): Promise<boolean> => {
+    // 2. Open the DM thread. Two strategies (OPERATIVE_DM_OPEN_STRATEGY):
+    //    - "ladder" (default): the hand-rolled observe→act ladder below.
+    //    - "agent": one self-healing stagehand.agent({mode:'dom'}) call that finds its
+    //      own path through popups/DOM churn. Either way the SAME invariant decides
+    //      success (URL is /direct/t/…), never the agent's self-report.
+    //
+    //    Ladder — Path A (quick): a profile "Message" button, if Instagram shows one.
+    //             Path B (reliable): the DM inbox search finds ANY account — including
+    //             non-followers, under "More accounts" — and clicking the result
+    //             opens/creates the /direct/t/ thread.
+    const openDmThreadLadder = async (): Promise<boolean> => {
       // Path A — profile Message button (present only for some relationships).
       await patchOperation(operationId, { currentAction: "looking for the Message button" });
       const msgBtn = await observeUntil(
@@ -337,6 +348,47 @@ export async function runOperativeAgent(opts: OperativeAgentOptions): Promise<vo
       return waitForThreadOpen(10_000);
     };
 
+    // B3: self-healing DM open via a DOM-mode agent. Reuses the constructor's model +
+    // key (no CUA, no extra key). The post-agent invariant + detectBlock still gate
+    // success, and the auditable sendMessage loop below is deliberately NOT delegated.
+    let dmAgentStep = 0;
+    const openDmThreadAgent = async (): Promise<boolean> => {
+      await patchOperation(operationId, { currentAction: "self-healing DM open (agent)" });
+      try {
+        const agent = stagehand.agent({ mode: "dom" });
+        const result = await agent.execute({
+          instruction:
+            `Open a direct-message conversation with the Instagram user @${handle}. ` +
+            `Dismiss any popups (e.g. 'Turn on Notifications', cookie banners). Prefer the ` +
+            `profile 'Message' button; otherwise open the Direct inbox, search for ${handle}, ` +
+            `and click the matching account to open the thread. Stop as soon as the conversation ` +
+            `thread is open with a message input box visible. Do NOT type or send any message.`,
+          maxSteps: clampInt(process.env.OPERATIVE_DM_AGENT_MAX_STEPS, 14, 4, 40),
+          signal,
+          callbacks: {
+            onStepFinish: async () => {
+              dmAgentStep += 1;
+              await patchOperation(operationId, {
+                currentAction: `self-healing DM open · step ${dmAgentStep}`,
+              }).catch(() => {});
+            },
+          },
+        });
+        // Stream the agent's reasoning to the logs for observability (the play-by-play).
+        for (const action of result.actions ?? []) {
+          const line = `${action.action ?? action.type ?? ""} ${action.reasoning ?? ""}`.trim();
+          if (line) console.log(`[operative ${operationId}] dm-agent: ${line}`);
+        }
+      } catch (err) {
+        console.warn(`[operative ${operationId}] DM-open agent failed:`, err);
+      }
+      // The invariant — not the agent's self-report — decides success.
+      return waitForThreadOpen(8_000);
+    };
+
+    const dmStrategy = (process.env.OPERATIVE_DM_OPEN_STRATEGY ?? "ladder").toLowerCase();
+    const openDmThread = dmStrategy === "agent" ? openDmThreadAgent : openDmThreadLadder;
+
     await patchOperation(operationId, { status: "opening", currentAction: "opening a direct message" });
     const opened = await openDmThread();
     if (detectBlock(page.url())) {
@@ -368,9 +420,27 @@ export async function runOperativeAgent(opts: OperativeAgentOptions): Promise<vo
       sellerConsumed = 0;
     }
 
+    // R2: prime with cross-operation agent memory before the first message
+    // (fail-open — recall returns [] if the memory server is down).
+    let priorIntel: string[] = [];
+    try {
+      const recalled = await recallMemories({
+        handle,
+        drug: lead.matchedKnownTermDrug,
+        codeWords: lead.detectedCodeWords,
+      });
+      priorIntel = recalled.map((m) => m.text);
+      if (priorIntel.length) {
+        await patchOperation(operationId, { priorIntel });
+        console.log(`[operative ${operationId}] primed with ${priorIntel.length} prior-intel memo(s)`);
+      }
+    } catch (err) {
+      console.warn(`[operative ${operationId}] memory recall failed (fail-open):`, err);
+    }
+
     // 2. The brain produces the opening line.
     await patchOperation(operationId, { currentAction: "composing the opening message" });
-    const opening = await negotiate(lead, transcript);
+    const opening = await negotiate(lead, transcript, priorIntel);
     let outgoing = opening.nextMessage;
 
     // 3. Negotiation loop: send → wait → analyze → check deal/location → repeat.
@@ -424,7 +494,7 @@ export async function runOperativeAgent(opts: OperativeAgentOptions): Promise<vo
         status: "analyzing",
         currentAction: "assessing the reply",
       });
-      const step = await negotiate(lead, transcript);
+      const step = await negotiate(lead, transcript, priorIntel);
       const a = step.analysis;
 
       // THE CORE CHECK — update deal/location after every exchange.
@@ -445,6 +515,29 @@ export async function runOperativeAgent(opts: OperativeAgentOptions): Promise<vo
             ? `confirmed — meet at ${a.meetingLocation}`
             : "deal & location confirmed",
         });
+        // R1: this confirmed bust teaches the detection corpus (best-effort — must
+        // never affect the already-confirmed outcome).
+        try {
+          await learnFromConfirmedOperation({ operationId, handle, lead, transcript });
+        } catch (err) {
+          console.warn(`[operative ${operationId}] field-intel learning failed:`, err);
+        }
+        // R2: pin this confirmed operation as long-term memory so the NEXT op is
+        // primed by it (fail-open).
+        try {
+          await pinOperationMemory({
+            operationId,
+            handle,
+            drug: lead.matchedKnownTermDrug,
+            codeWords: lead.detectedCodeWords,
+            opener: transcript.find((m) => m.role === "operative")?.text ?? null,
+            meetingLocation: a.meetingLocation,
+            meetingTime: a.meetingTime,
+            turnCount: transcript.filter((m) => m.role === "operative").length,
+          });
+        } catch (err) {
+          console.warn(`[operative ${operationId}] memory pin failed (fail-open):`, err);
+        }
         return;
       }
       if (a.rejection || step.done) {
