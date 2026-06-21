@@ -5,6 +5,7 @@
 // This is rendered both full-page (/operations/[id]) and inline in the Command Center,
 // so it carries NO page chrome (no <main>, no back-link) — only the war-room itself.
 import {
+  BrainCircuitIcon,
   CheckCircle2Icon,
   DownloadIcon,
   Loader2Icon,
@@ -246,6 +247,28 @@ export function OperationPanel({
 
         <OperationStatusChips operation={operation} />
       </header>
+
+      {operation.priorIntel.length > 0 ? (
+        <section
+          aria-label="Prior intel"
+          className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3"
+        >
+          <div className="mb-1.5 flex items-center gap-2 font-mono text-xs tracking-widest text-primary uppercase">
+            <BrainCircuitIcon className="size-3.5" aria-hidden="true" />
+            Prior intel used — memory from earlier busts primed this op
+          </div>
+          <ul className="space-y-1 text-sm text-muted-foreground">
+            {operation.priorIntel.slice(0, 5).map((memo, i) => (
+              <li key={i} className="flex gap-2">
+                <span className="text-primary" aria-hidden="true">
+                  ›
+                </span>
+                <span>{memo}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <div className={cn(transcriptMode === "panel" && "grid gap-6 lg:grid-cols-[3fr_2fr]")}>
         {/* Live browser (or terminal panel once the session is released). */}

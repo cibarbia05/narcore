@@ -43,10 +43,21 @@ function opToHash(o: Omit<Operation, "messages">): Record<string, string> {
     meetingLocation: o.meetingLocation ?? "",
     meetingTime: o.meetingTime ?? "",
     turnCount: String(o.turnCount),
+    priorIntelJson: JSON.stringify(o.priorIntel ?? []),
     error: o.error ?? "",
     startedAt: o.startedAt,
     updatedAt: o.updatedAt,
   };
+}
+
+function parseStringArray(raw: string | undefined): string[] {
+  if (!raw) return [];
+  try {
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
 }
 
 function hashToOp(h: Record<string, string>, messages: OperationMessage[]): Operation {
@@ -65,6 +76,7 @@ function hashToOp(h: Record<string, string>, messages: OperationMessage[]): Oper
     meetingTime: h.meetingTime ? h.meetingTime : null,
     turnCount: Number.parseInt(h.turnCount ?? "0", 10),
     messages,
+    priorIntel: parseStringArray(h.priorIntelJson),
     error: h.error ? h.error : null,
     startedAt: h.startedAt ?? "",
     updatedAt: h.updatedAt ?? "",
@@ -100,6 +112,7 @@ export async function patchOperation(
   if (patch.meetingLocation !== undefined) fields.meetingLocation = patch.meetingLocation ?? "";
   if (patch.meetingTime !== undefined) fields.meetingTime = patch.meetingTime ?? "";
   if (patch.turnCount !== undefined) fields.turnCount = String(patch.turnCount);
+  if (patch.priorIntel !== undefined) fields.priorIntelJson = JSON.stringify(patch.priorIntel);
   if (patch.error !== undefined) fields.error = patch.error ?? "";
   await client.hSet(opKey(id), fields);
 }

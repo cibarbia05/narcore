@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "seed": "tsx scripts/seed.ts",
+    "seed:memories": "tsx scripts/seed-memories.ts",
     "post-mock": "tsx scripts/post-mock.ts",
     "scrape-demo": "tsx scripts/scrape-demo.ts",
     "ig:login": "tsx scripts/ig-login.ts",

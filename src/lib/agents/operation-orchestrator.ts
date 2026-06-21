@@ -143,6 +143,7 @@ export async function startOperation(
     meetingTime: null,
     turnCount: 0,
     messages: [],
+    priorIntel: [],
     error: null,
     startedAt: now,
     updatedAt: now,

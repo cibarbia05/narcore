@@ -96,10 +96,10 @@ const STEP_TOOL: Anthropic.Tool = {
   },
 };
 
-function systemPrompt(lead: LeadSummary): string {
+function systemPrompt(lead: LeadSummary, priorIntel: string[] = []): string {
   const drug = lead.matchedKnownTermDrug ?? "the advertised product";
   const codeWords = lead.detectedCodeWords.length ? lead.detectedCodeWords.join(", ") : "n/a";
-  return [
+  const lines = [
     "You are an undercover online operative for an AUTHORIZED law-enforcement narcotics investigation.",
     `A public Instagram account (@${lead.handle}) was flagged for advertising illicit drugs (assessed: ${drug}; coded terms seen: ${codeWords}).`,
     "You are direct-messaging that account posing as an ordinary interested buyer.",
@@ -109,9 +109,21 @@ function systemPrompt(lead: LeadSummary): string {
     "2. LOCATION: get the seller to name a specific in-person meeting place (and ideally a time).",
     "",
     "STYLE: write like a real person texting — short, casual, lowercase is fine, light slang, one or two sentences, no emojis spam. Never reveal you are automated or law enforcement. Don't over-ask; move the conversation naturally toward a meetup. Ask for a meeting spot once a deal is in hand. Don't propose specifics of drugs/quantities beyond what's needed to seem real; let the seller lead on product details.",
+  ];
+  // R2: prime with recalled intel from prior confirmed operations (treat as hints,
+  // not facts about THIS seller).
+  if (priorIntel.length) {
+    lines.push(
+      "",
+      "PRIOR INTEL — lessons from earlier confirmed operations against similar sellers (use as hints for tone/approach; do not assume they apply verbatim to this seller):",
+      ...priorIntel.slice(0, 5).map((m) => `- ${m}`),
+    );
+  }
+  lines.push(
     "",
     "Every turn, call submit_negotiation_step with your honest read of the conversation and your next message. Be STRICT: only set dealConfirmed/locationConfirmed when the seller has genuinely committed, not on vague replies. If both are confirmed, set done=true (nextMessage may be a brief closing confirmation or null). If the seller refuses or smells a setup, set rejection=true and done=true.",
-  ].join("\n");
+  );
+  return lines.join("\n");
 }
 
 function renderTranscript(transcript: OperationMessage[]): string {
@@ -139,6 +151,7 @@ function asNumber(v: unknown): number {
 export async function negotiate(
   lead: LeadSummary,
   transcript: OperationMessage[],
+  priorIntel: string[] = [],
 ): Promise<NegotiationStep> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -148,7 +161,7 @@ export async function negotiate(
   const message = await client.messages.create({
     model: process.env.OPERATIVE_MODEL ?? DEFAULT_OPERATIVE_MODEL,
     max_tokens: 1024,
-    system: systemPrompt(lead),
+    system: systemPrompt(lead, priorIntel),
     tools: [STEP_TOOL],
     tool_choice: { type: "tool", name: STEP_TOOL.name },
     messages: [

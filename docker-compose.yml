@@ -50,5 +50,67 @@ services:
       start_period: 300s # don't count health failures while the model downloads on first boot
     restart: unless-stopped
 
+  # --- R2: Redis Iris agent memory (cross-operation operative memory) ---
+  # Shared env for the agent-memory api + worker. Embeddings route through the
+  # null-stripping proxy to the SAME local nomic embedder the app uses (one embedding
+  # family, one Redis); generation uses Claude. Index is pinned to 768 dims to match
+  # nomic. See OPERATIVE.md for why the proxy exists.
+  embedding-proxy:
+    image: node:20-alpine
+    container_name: narcore-embed-proxy
+    depends_on:
+      - embedding
+    command: ["node", "/app/server.js"]
+    environment:
+      UPSTREAM_URL: http://embedding:8080
+      PORT: "8090"
+    volumes:
+      - ./infra/embedding-proxy/server.js:/app/server.js:ro
+    restart: unless-stopped
+
+  agent-memory:
+    image: redislabs/agent-memory-server:latest
+    container_name: narcore-memory
+    depends_on:
+      redis:
+        condition: service_healthy
+      embedding-proxy:
+        condition: service_started
+    ports:
+      - "8000:8000" # REST API — AGENT_MEMORY_URL=http://localhost:8000
+    environment: &agent-memory-env
+      REDIS_URL: redis://redis:6379
+      DISABLE_AUTH: "true"
+      AUTH_MODE: disabled
+      GENERATION_MODEL: anthropic/claude-sonnet-4-6
+      FAST_MODEL: anthropic/claude-haiku-4-5
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # Embeddings → null-stripping proxy → nomic (text-embedding-3-small is just a
+      # name LiteLLM accepts; OPENAI_API_BASE points it at our local embedder).
+      OPENAI_API_BASE: http://embedding-proxy:8090/v1
+      OPENAI_API_KEY: sk-noop
+      EMBEDDING_MODEL: text-embedding-3-small
+      REDISVL_VECTOR_DIMENSIONS: "768"
+      # Explicit memories carry their own topics/entities — skip the heavy auto-extractors.
+      ENABLE_NER: "false"
+      ENABLE_TOPIC_EXTRACTION: "false"
+      ENABLE_DISCRETE_MEMORY_EXTRACTION: "false"
+    restart: unless-stopped
+
+  # The Docket worker indexes long-term memories. It MUST run or memories are never
+  # searchable (create returns ok but search stays empty).
+  agent-memory-worker:
+    image: redislabs/agent-memory-server:latest
+    container_name: narcore-memory-worker
+    depends_on:
+      - agent-memory
+    command: ["agent-memory", "task-worker"]
+    environment: *agent-memory-env
+    # The worker serves no HTTP port, so the image's API healthcheck would mark it
+    # "unhealthy" even though it's indexing fine — disable it to avoid confusion.
+    healthcheck:
+      disable: true
+    restart: unless-stopped
+
 volumes:
   redis-data:
