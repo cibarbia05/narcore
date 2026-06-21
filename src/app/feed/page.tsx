@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { TriangleAlert } from "lucide-react";
 
+import { TopNav } from "@/components/top-nav";
 import { loadFeed, type FeedPost } from "../../../scraper/feed";
 
 export const metadata: Metadata = {
@@ -79,30 +80,35 @@ export default function FeedPage() {
   const posts = loadFeed();
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-12">
-      <header className="mb-8 space-y-4">
-        <div className="flex items-center gap-2 rounded-lg border border-border bg-card/50 px-3 py-2 font-mono text-xs text-muted-foreground">
-          <TriangleAlert aria-hidden className="size-3.5 text-primary" />
-          <span>
-            <span className="text-foreground">Synthetic test data.</span> Fictional posts for
-            pipeline testing — not real accounts, links, or activity.
-          </span>
-        </div>
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight text-balance">Synthetic Social Feed</h1>
-          <p className="text-sm text-pretty text-muted-foreground">
-            The scrape target for Narcore. A Browserbase session reads these{" "}
-            <span className="font-mono">{posts.length}</span> posts and submits each to the
-            detection pipeline.
-          </p>
-        </div>
-      </header>
+    <>
+      <TopNav />
+      <main className="mx-auto max-w-2xl px-6 py-12">
+        <header className="mb-8 space-y-4">
+          <div className="flex items-center gap-2 rounded-lg border border-border bg-card/50 px-3 py-2 font-mono text-xs text-muted-foreground">
+            <TriangleAlert aria-hidden className="size-3.5 text-primary" />
+            <span>
+              <span className="text-foreground">Synthetic test data.</span> Fictional posts for
+              pipeline testing — not real accounts, links, or activity.
+            </span>
+          </div>
+          <div className="space-y-1">
+            <h1 className="text-2xl font-semibold tracking-tight text-balance">
+              Synthetic Social Feed
+            </h1>
+            <p className="text-sm text-pretty text-muted-foreground">
+              The scrape target for Narcore. A Browserbase session reads these{" "}
+              <span className="font-mono">{posts.length}</span> posts and submits each to the
+              detection pipeline.
+            </p>
+          </div>
+        </header>
 
-      <div role="feed" aria-label="Synthetic social posts" className="space-y-4">
-        {posts.map((post) => (
-          <PostCard key={post.postLink} post={post} />
-        ))}
-      </div>
-    </main>
+        <div role="feed" aria-label="Synthetic social posts" className="space-y-4">
+          {posts.map((post) => (
+            <PostCard key={post.postLink} post={post} />
+          ))}
+        </div>
+      </main>
+    </>
   );
 }
